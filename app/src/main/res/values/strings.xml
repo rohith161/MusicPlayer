@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MusicPlayer</string>
+    <string name="search_music">Search music</string>
+    <string name="music_library">Music library</string>
+    <string name="no_music">No music found</string>
+    <string name="grant_audio_permission">Allow MusicPlayer to access your music to build the library.</string>
+    <string name="permission_required">Music permission required</string>
+    <string name="grant_permission">Grant permission</string>
+    <string name="unknown_artist">Unknown artist</string>
+</resources>
