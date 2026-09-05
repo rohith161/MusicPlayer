@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/mp_background"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingTop="20dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="24dp">
+
+    <ImageButton
+        android:id="@+id/playerClose"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Close player"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
+        app:tint="@color/mp_foreground" />
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="20dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="NOW PLAYING"
+        android:textColor="@color/mp_primary"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.14" />
+
+    <TextView
+        android:id="@+id/playerArtwork"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="20dp"
+        android:layout_weight="1"
+        android:background="@color/mp_surface"
+        android:gravity="center"
+        android:text="♪"
+        android:textColor="@color/mp_primary"
+        android:textSize="96sp" />
+
+    <TextView
+        android:id="@+id/playerTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="2"
+        android:textColor="@color/mp_foreground"
+        android:textSize="25sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/playerArtist"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
+        android:gravity="center"
+        android:textColor="@color/mp_foreground_muted"
+        android:textSize="15sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="22dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+        <ImageButton
+            android:id="@+id/playerPrevious"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Previous"
+            android:src="@android:drawable/ic_media_previous"
+            app:tint="@color/mp_foreground" />
+        <ImageButton
+            android:id="@+id/playerPlay"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:background="@drawable/bg_play_button"
+            android:contentDescription="Play or pause"
+            android:src="@android:drawable/ic_media_play"
+            app:tint="@color/mp_primary_foreground" />
+        <ImageButton
+            android:id="@+id/playerNext"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Next"
+            android:src="@android:drawable/ic_media_next"
+            app:tint="@color/mp_foreground" />
+    </LinearLayout>
+</LinearLayout>
