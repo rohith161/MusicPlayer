@@ -9,6 +9,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -26,6 +27,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: SongAdapter
     private lateinit var songList: RecyclerView
     private lateinit var emptyState: LinearLayout
+    private lateinit var miniPlayer: LinearLayout
+    private lateinit var nowTitle: TextView
+    private lateinit var nowArtist: TextView
     private lateinit var controllerFuture: ListenableFuture<MediaController>
     private var controller: MediaController? = null
     private var allTracks: List<Track> = emptyList()
@@ -41,6 +45,9 @@ class MainActivity : AppCompatActivity() {
         repository = MusicRepository(contentResolver)
         songList = findViewById(R.id.songList)
         emptyState = findViewById(R.id.emptyState)
+        miniPlayer = findViewById(R.id.miniPlayer)
+        nowTitle = findViewById(R.id.nowTitle)
+        nowArtist = findViewById(R.id.nowArtist)
         val searchInput: EditText = findViewById(R.id.searchInput)
         val grantButton: Button = findViewById(R.id.grantPermissionButton)
 
@@ -99,11 +106,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hasAudioPermission(): Boolean {
-        val permission = if (Build.VERSION.SDK_INT >= 33) {
-            Manifest.permission.READ_MEDIA_AUDIO
-        } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        }
+        val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO
+        else Manifest.permission.READ_EXTERNAL_STORAGE
         return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
     }
 
@@ -137,6 +141,9 @@ class MainActivity : AppCompatActivity() {
         player.setMediaItems(items, index, 0L)
         player.prepare()
         player.play()
+        nowTitle.text = track.title
+        nowArtist.text = track.artist
+        miniPlayer.visibility = android.view.View.VISIBLE
     }
 
     override fun onDestroy() {
