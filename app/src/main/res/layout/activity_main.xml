@@ -156,7 +156,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Previous"
             android:src="@android:drawable/ic_media_previous"
-            android:tint="@color/mp_foreground" />
+            app:tint="@color/mp_foreground" />
         <ImageButton
             android:id="@+id/playButton"
             android:layout_width="48dp"
@@ -164,7 +164,7 @@
             android:background="@drawable/bg_play_button"
             android:contentDescription="Play or pause"
             android:src="@android:drawable/ic_media_play"
-            android:tint="@color/mp_primary_foreground" />
+            app:tint="@color/mp_primary_foreground" />
         <ImageButton
             android:id="@+id/nextButton"
             android:layout_width="44dp"
@@ -172,6 +172,6 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Next"
             android:src="@android:drawable/ic_media_next"
-            android:tint="@color/mp_foreground" />
+            app:tint="@color/mp_foreground" />
     </LinearLayout>
 </LinearLayout>
