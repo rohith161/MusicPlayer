@@ -12,6 +12,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -43,6 +44,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var videoList: androidx.recyclerview.widget.RecyclerView
     private lateinit var onlineList: androidx.recyclerview.widget.RecyclerView
     private lateinit var emptyState: LinearLayout
+    private lateinit var onlineProgress: ProgressBar
     private lateinit var miniPlayer: LinearLayout
     private lateinit var folderHeader: LinearLayout
     private lateinit var screenTitle: TextView
@@ -76,6 +78,7 @@ class MainActivity : AppCompatActivity() {
         videoList = findViewById(R.id.videoList)
         onlineList = findViewById(R.id.onlineList)
         emptyState = findViewById(R.id.emptyState)
+        onlineProgress = findViewById(R.id.onlineProgress)
         emptyTitle = findViewById(R.id.emptyTitle)
         emptySubtitle = findViewById(R.id.emptySubtitle)
         miniPlayer = findViewById(R.id.miniPlayer)
@@ -175,6 +178,7 @@ class MainActivity : AppCompatActivity() {
         currentFolder = null
         folderHeader.visibility = View.GONE
         searchInput.setText("")
+        onlineProgress.visibility = View.GONE
         updateTabStyles()
         when (newMode) {
             Mode.MUSIC -> showFolders()
@@ -198,6 +202,7 @@ class MainActivity : AppCompatActivity() {
         mode = Mode.MUSIC
         currentFolder = null
         folderHeader.visibility = View.GONE
+        onlineProgress.visibility = View.GONE
         screenTitle.text = getString(R.string.your_folders)
         screenSubtitle.text = getString(R.string.folders_subtitle)
         showOnly(folderList)
@@ -210,6 +215,7 @@ class MainActivity : AppCompatActivity() {
         mode = Mode.MUSIC
         currentFolder = folder
         folderHeader.visibility = View.VISIBLE
+        onlineProgress.visibility = View.GONE
         screenTitle.text = folder
         screenSubtitle.text = getString(R.string.folder_subtitle)
         showOnly(songList)
@@ -220,6 +226,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showVideos() {
         folderHeader.visibility = View.GONE
+        onlineProgress.visibility = View.GONE
         screenTitle.text = getString(R.string.local_videos)
         screenSubtitle.text = getString(R.string.videos_subtitle)
         showOnly(videoList)
@@ -229,6 +236,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showOnlineHome() {
         folderHeader.visibility = View.GONE
+        onlineProgress.visibility = View.GONE
         screenTitle.text = getString(R.string.online_music)
         screenSubtitle.text = getString(R.string.online_subtitle)
         showOnly(onlineList)
@@ -239,16 +247,21 @@ class MainActivity : AppCompatActivity() {
     private fun searchOnline(query: String) {
         if (query.isBlank()) return
         showOnly(onlineList)
-        setEmpty(true, "Searching…", "Finding open audio online")
+        onlineProgress.visibility = View.VISIBLE
+        emptyTitle.text = "Searching online…"
+        emptySubtitle.text = "Loading results from Internet Archive"
+        emptyState.visibility = View.VISIBLE
         Thread {
             try {
                 val results = onlineRepository.search(query)
                 runOnUiThread {
+                    onlineProgress.visibility = View.GONE
                     onlineAdapter.submitList(results)
                     setEmpty(results.isEmpty(), "No results", "Try another artist, title, or keyword.")
                 }
             } catch (error: Exception) {
                 runOnUiThread {
+                    onlineProgress.visibility = View.GONE
                     setEmpty(true, "Online search failed", error.message ?: "Check your internet connection.")
                 }
             }
@@ -256,6 +269,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun filterLocal(query: String) {
+        onlineProgress.visibility = View.GONE
         when (mode) {
             Mode.MUSIC -> if (currentFolder == null) {
                 val folders = allTracks.groupBy { it.folder }.filter { query.isBlank() || it.key.contains(query, true) }
@@ -283,6 +297,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setEmpty(show: Boolean, title: String, subtitle: String) {
+        if (!show) onlineProgress.visibility = View.GONE
         emptyTitle.text = title
         emptySubtitle.text = subtitle
         emptyState.visibility = if (show) View.VISIBLE else View.GONE
