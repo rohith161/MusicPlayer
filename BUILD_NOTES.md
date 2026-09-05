@@ -27,18 +27,20 @@ The video player provides touch controls so playback can be adjusted without ope
 ## Search tab Media3 lint fix
 
 ### Error
-Android CI run #123 passed unit-test compilation but failed in `lintDebug`. Lint reported `UnsafeOptInUsageError` at `HomeActivitySearch.kt:7` because `HomeActivity` is annotated with Media3 `UnstableApi`, while the `showSearch()` extension declaration did not explicitly opt into that API.
+Android CI run #123 failed in `lintDebug` because `HomeActivitySearch.kt` declared an extension on `HomeActivity`, while `HomeActivity` is annotated with Media3 `UnstableApi`.
+
+The first attempted fix used `@OptIn(UnstableApi::class)`. CI run #125 showed why that was incorrect for this dependency: Kotlin warned that `UnstableApi` is not annotated with `@RequiresOptIn`, so `@OptIn` has no effect. Lint consequently still reported `UnsafeOptInUsageError` on the extension declaration.
 
 ### Fix
-Added `@OptIn(UnstableApi::class)` to the `HomeActivity.showSearch()` extension and imported `androidx.media3.common.util.UnstableApi`.
+Changed the search extension to use the direct `@UnstableApi` declaration annotation. This is the annotation form required by the lint diagnostic and matches the way `HomeActivity` itself declares its Media3 API usage.
 
-This is an explicit API opt-in, not a lint suppression. It tells the compiler and lint that the search extension intentionally operates on the same Media3-unstable `HomeActivity` API contract.
+No lint suppression or baseline was added. The code now explicitly documents the actual Media3 API dependency.
 
 ### Why the feature exists
 The search UI is separated from `HomeActivity.kt` so the main Activity can remain focused on navigation, playback, permissions, and media-library state while the search-tab presentation remains isolated.
 
 ### How it works
-`HomeActivity` remains the owner of Media3 `MediaController` integration and calls `showSearch()` when the Search tab is selected. The extension only updates search controls, hides the folder header, and changes the title/subtitle. Because its receiver is the Media3-annotated `HomeActivity`, the extension now explicitly opts into `UnstableApi`.
+`HomeActivity` remains the owner of Media3 `MediaController` integration and calls `showSearch()` when the Search tab is selected. The extension only updates search controls, hides the folder header, and changes the title/subtitle. Because its receiver is the Media3-annotated `HomeActivity`, the extension carries the same direct `UnstableApi` annotation.
 
 ## CI policy
 For future changes, commit messages will use:
