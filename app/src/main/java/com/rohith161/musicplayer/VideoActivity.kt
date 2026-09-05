@@ -26,7 +26,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
-import androidx.media3.common.Tracks
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -69,16 +68,11 @@ class VideoActivity : AppCompatActivity() {
 
     private val subtitlePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
-            runCatching { contentResolver.takePersistableUriPermission(uri, IntentFlags.READ) }
+            runCatching { contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
             applySubtitleUri(uri)
         }
     }
-
-    private val audioPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) applyAudioUri(uri)
-    }
-
-    private object IntentFlags { const val READ = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION }
+    private val audioPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) applyAudioUri(uri) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,9 +85,9 @@ class VideoActivity : AppCompatActivity() {
         lockButton = findViewById(R.id.videoLockButton)
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         prefs = getSharedPreferences("video_resume_positions", MODE_PRIVATE)
-
         videoUri = intent.getStringExtra(EXTRA_URI)?.let(Uri::parse) ?: run { finish(); return }
         uriKey = videoUri.toString()
+
         val exoPlayer = ExoPlayer.Builder(this).build()
         player = exoPlayer
         playerView.player = exoPlayer
@@ -104,7 +98,6 @@ class VideoActivity : AppCompatActivity() {
         exoPlayer.prepare()
         exoPlayer.seekTo(prefs.getLong(uriKey, 0L).coerceAtLeast(0L))
         exoPlayer.play()
-
         exoPlayer.addListener(object : Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
                 loudnessEnhancer?.release()
@@ -118,61 +111,38 @@ class VideoActivity : AppCompatActivity() {
         findViewById<Button>(R.id.videoSubtitleButton).setOnClickListener { showSubtitleMenu() }
         findViewById<Button>(R.id.videoAudioButton).setOnClickListener { showAudioMenu() }
         findViewById<MediaRouteButton>(R.id.videoOutputButton).routeSelector = MediaRouteSelector.Builder()
-            .addControlCategory(MediaControlIntent.CATEGORY_LIVE_AUDIO)
-            .addControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK)
-            .build()
+            .addControlCategory(MediaControlIntent.CATEGORY_LIVE_AUDIO).addControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK).build()
         playerView.setOnTouchListener { _, event -> handleGesture(event) }
         showControlsTemporarily()
     }
 
-    private fun handleGesture(event: MotionEvent): Boolean {
-        if (locked) return true
-        return when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                startX = event.x; startY = event.y
-                gestureStartVolume = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0
-                gestureStartBrightness = window.attributes.screenBrightness.takeIf { it >= 0f } ?: 0.5f
-                gestureSide = if (event.x >= playerView.width / 2f) 1 else -1
-                gestureActive = false
-                handler.removeCallbacks(startSpeedGesture)
-                handler.postDelayed(startSpeedGesture, 350L)
-                showControlsTemporarily()
-                false
-            }
-            MotionEvent.ACTION_MOVE -> {
-                val dx = event.x - startX
-                val dy = event.y - startY
-                if (speedActive) {
-                    val speed = (speedBase + dx / playerView.width.coerceAtLeast(1) * 3f).coerceIn(0.25f, 4f)
-                    player?.setPlaybackSpeed(speed)
-                    showSpeed(speed)
-                    true
-                } else {
-                    if (abs(dy) > 18f && abs(dy) > abs(dx) * 1.15f) gestureActive = true
-                    if (!gestureActive) false else {
-                        if (gestureSide > 0) adjustVolume(startY - event.y, playerView.height.toFloat())
-                        else adjustBrightness(startY - event.y, playerView.height.toFloat())
-                        true
-                    }
-                }
-            }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                handler.removeCallbacks(startSpeedGesture)
-                if (speedActive) {
-                    speedActive = false
-                    gestureHint.postDelayed({ if (!speedActive) gestureHint.visibility = View.GONE }, 700L)
-                    true
-                } else if (gestureActive) {
-                    gestureHint.visibility = View.GONE
-                    gestureActive = false
-                    true
-                } else {
-                    showControlsTemporarily()
-                    false
-                }
-            }
-            else -> speedActive || gestureActive
+    private fun handleGesture(event: MotionEvent): Boolean = when (event.actionMasked) {
+        MotionEvent.ACTION_DOWN -> {
+            startX = event.x; startY = event.y
+            gestureStartVolume = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0
+            gestureStartBrightness = window.attributes.screenBrightness.takeIf { it >= 0f } ?: 0.5f
+            gestureSide = if (event.x >= playerView.width / 2f) 1 else -1
+            gestureActive = false
+            handler.removeCallbacks(startSpeedGesture); handler.postDelayed(startSpeedGesture, 350L)
+            showControlsTemporarily(); false
         }
+        MotionEvent.ACTION_MOVE -> {
+            val dx = event.x - startX; val dy = event.y - startY
+            if (speedActive) {
+                val speed = (speedBase + dx / playerView.width.coerceAtLeast(1) * 3f).coerceIn(0.25f, 4f)
+                player?.setPlaybackSpeed(speed); showSpeed(speed); true
+            } else {
+                if (abs(dy) > 18f && abs(dy) > abs(dx) * 1.15f) gestureActive = true
+                if (!gestureActive) false else { if (gestureSide > 0) adjustVolume(startY - event.y, playerView.height.toFloat()) else adjustBrightness(startY - event.y, playerView.height.toFloat()); true }
+            }
+        }
+        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            handler.removeCallbacks(startSpeedGesture)
+            if (speedActive) { speedActive = false; gestureHint.postDelayed({ if (!speedActive) gestureHint.visibility = View.GONE }, 700L); true }
+            else if (gestureActive) { gestureHint.visibility = View.GONE; gestureActive = false; true }
+            else { showControlsTemporarily(); false }
+        }
+        else -> speedActive || gestureActive
     }
 
     private fun cycleSpeed() {
@@ -180,16 +150,10 @@ class VideoActivity : AppCompatActivity() {
         val current = player?.playbackParameters?.speed ?: 1f
         val index = speeds.indexOfFirst { abs(it - current) < 0.01f }.let { if (it < 0) 0 else it }
         val next = speeds[(index + 1) % speeds.size]
-        player?.setPlaybackSpeed(next)
-        speedButton.text = "${next}×"
-        showSpeed(next)
+        player?.setPlaybackSpeed(next); speedButton.text = "${next}×"; showSpeed(next)
     }
 
-    private fun showSpeed(speed: Float) {
-        gestureHint.text = "${speed}×"
-        gestureHint.visibility = View.VISIBLE
-        gestureHint.alpha = 0.82f
-    }
+    private fun showSpeed(speed: Float) { gestureHint.text = "${speed}×"; gestureHint.visibility = View.VISIBLE; gestureHint.alpha = 0.82f }
 
     private fun adjustVolume(delta: Float, height: Float) {
         val manager = audioManager ?: return
@@ -199,28 +163,19 @@ class VideoActivity : AppCompatActivity() {
         manager.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
         val percent = (target * 100f / max).roundToInt()
         loudnessEnhancer?.setTargetGain(if (percent >= 100) 6000 else 0)
-        gestureHint.text = if (percent >= 100) "Volume 100% • +6 dB" else "Volume $percent%"
-        gestureHint.visibility = View.VISIBLE
-        gestureHint.alpha = 0.82f
+        gestureHint.text = if (percent >= 100) "Volume 100% • +6 dB" else "Volume $percent%"; gestureHint.visibility = View.VISIBLE; gestureHint.alpha = 0.82f
     }
 
     private fun adjustBrightness(delta: Float, height: Float) {
         val brightness = (gestureStartBrightness + delta / height.coerceAtLeast(1f) * 0.9f).coerceIn(0.02f, 1f)
         window.attributes = window.attributes.apply { screenBrightness = brightness }
-        gestureHint.text = "Brightness ${(brightness * 100).roundToInt()}%"
-        gestureHint.visibility = View.VISIBLE
-        gestureHint.alpha = 0.82f
+        gestureHint.text = "Brightness ${(brightness * 100).roundToInt()}%"; gestureHint.visibility = View.VISIBLE; gestureHint.alpha = 0.82f
     }
 
-    private fun showControlsTemporarily() {
-        controlsOverlay.visibility = View.VISIBLE
-        handler.removeCallbacks(hideControls)
-        handler.postDelayed(hideControls, 3000L)
-    }
+    private fun showControlsTemporarily() { controlsOverlay.visibility = View.VISIBLE; handler.removeCallbacks(hideControls); handler.postDelayed(hideControls, 3000L) }
 
     private fun showSubtitleMenu() {
-        val labels = mutableListOf("Off", "Embedded subtitles", "External subtitle file", "Online subtitle URL")
-        androidx.appcompat.app.AlertDialog.Builder(this).setTitle("Subtitles").setItems(labels.toTypedArray()) { _, which ->
+        androidx.appcompat.app.AlertDialog.Builder(this).setTitle("Subtitles").setItems(arrayOf("Off", "Embedded subtitles", "External subtitle file", "Online subtitle URL")) { _, which ->
             when (which) {
                 0 -> clearExternalSubtitle()
                 1 -> selectEmbeddedSubtitle()
@@ -233,25 +188,13 @@ class VideoActivity : AppCompatActivity() {
     private fun selectEmbeddedSubtitle() {
         val p = player ?: return
         val groups = p.currentTracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }
-        if (groups.isEmpty()) {
-            gestureHint.text = "No embedded subtitles"
-            gestureHint.visibility = View.VISIBLE
-            handler.postDelayed({ gestureHint.visibility = View.GONE }, 1200L)
-            return
-        }
-        val choices = groups.flatMap { group -> (0 until group.length).map { i ->
-            val f = group.getTrackFormat(i)
-            "${f.language ?: "Unknown"}${if (f.label != null) " • ${f.label}" else ""}"
-        } }
+        if (groups.isEmpty()) { gestureHint.text = "No embedded subtitles"; gestureHint.visibility = View.VISIBLE; handler.postDelayed({ gestureHint.visibility = View.GONE }, 1200L); return }
+        val choices = groups.flatMap { g -> (0 until g.length).map { i -> g.getTrackFormat(i).language ?: "Unknown" } }
         androidx.appcompat.app.AlertDialog.Builder(this).setTitle("Embedded subtitles").setItems(choices.toTypedArray()) { _, which ->
             var n = which
             groups.forEach { group ->
                 if (n < group.length) {
-                    p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
-                        .clearOverridesOfType(C.TRACK_TYPE_TEXT)
-                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                        .addOverride(TrackSelectionOverride(group.mediaTrackGroup, n)).build()
-                    return@setItems
+                    p.trackSelectionParameters = p.trackSelectionParameters.buildUpon().clearOverridesOfType(C.TRACK_TYPE_TEXT).setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false).addOverride(TrackSelectionOverride(group.mediaTrackGroup, n)).build(); return@setItems
                 }
                 n -= group.length
             }
@@ -259,69 +202,41 @@ class VideoActivity : AppCompatActivity() {
     }
 
     private fun clearExternalSubtitle() {
-        val p = player ?: return
-        val position = p.currentPosition
-        val wasPlaying = p.isPlaying
-        p.setMediaItem(MediaItem.fromUri(videoUri), position)
-        p.prepare()
-        if (wasPlaying) p.play()
+        val p = player ?: return; val position = p.currentPosition; val playing = p.isPlaying
+        p.setMediaItem(MediaItem.fromUri(videoUri), position); p.prepare(); if (playing) p.play()
     }
 
     private fun applySubtitleUri(uri: Uri) {
-        val mime = when (uri.toString().lowercase()) {
-            else -> when {
-                uri.path?.endsWith(".srt", true) == true -> MimeTypes.APPLICATION_SUBRIP
-                uri.path?.endsWith(".ass", true) == true || uri.path?.endsWith(".ssa", true) == true -> MimeTypes.TEXT_SSA
-                else -> MimeTypes.TEXT_VTT
-            }
+        val mime = when {
+            uri.path?.endsWith(".srt", true) == true -> MimeTypes.APPLICATION_SUBRIP
+            uri.path?.endsWith(".ass", true) == true || uri.path?.endsWith(".ssa", true) == true -> MimeTypes.TEXT_SSA
+            else -> MimeTypes.TEXT_VTT
         }
-        val config = MediaItem.SubtitleConfiguration.Builder(uri).setMimeType(mime).setLanguage("und").setSelectionFlags(C.SELECTION_FLAG_DEFAULT).build()
-        applySubtitleConfig(config)
+        applySubtitleConfig(MediaItem.SubtitleConfiguration.Builder(uri).setMimeType(mime).setLanguage("und").setSelectionFlags(C.SELECTION_FLAG_DEFAULT).build())
     }
 
-    private fun applySubtitleUrl(url: String) {
-        val config = MediaItem.SubtitleConfiguration.Builder(Uri.parse(url)).setMimeType(MimeTypes.TEXT_VTT).setLanguage("und").setSelectionFlags(C.SELECTION_FLAG_DEFAULT).build()
-        applySubtitleConfig(config)
-    }
+    private fun applySubtitleUrl(url: String) = applySubtitleConfig(MediaItem.SubtitleConfiguration.Builder(Uri.parse(url)).setMimeType(MimeTypes.TEXT_VTT).setLanguage("und").setSelectionFlags(C.SELECTION_FLAG_DEFAULT).build())
 
     private fun applySubtitleConfig(config: MediaItem.SubtitleConfiguration) {
-        val p = player ?: return
-        val position = p.currentPosition
-        val wasPlaying = p.isPlaying
-        val item = MediaItem.Builder().setUri(videoUri).setSubtitleConfigurations(listOf(config)).build()
-        p.setMediaItem(item, position)
-        p.prepare()
-        if (wasPlaying) p.play()
+        val p = player ?: return; val position = p.currentPosition; val playing = p.isPlaying
+        p.setMediaItem(MediaItem.Builder().setUri(videoUri).setSubtitleConfigurations(listOf(config)).build(), position); p.prepare(); if (playing) p.play()
     }
 
     private fun showAudioMenu() {
-        val items = arrayOf("Embedded audio", "External audio file", "Online audio URL")
-        androidx.appcompat.app.AlertDialog.Builder(this).setTitle("Audio track").setItems(items) { _, which ->
-            when (which) {
-                0 -> selectEmbeddedAudio()
-                1 -> audioPicker.launch(arrayOf("audio/*"))
-                2 -> promptForUrl("Online audio URL") { applyAudioUrl(it) }
-            }
+        androidx.appcompat.app.AlertDialog.Builder(this).setTitle("Audio track").setItems(arrayOf("Embedded audio", "External audio file", "Online audio URL")) { _, which ->
+            when (which) { 0 -> selectEmbeddedAudio(); 1 -> audioPicker.launch(arrayOf("audio/*")); 2 -> promptForUrl("Online audio URL") { applyAudioUrl(it) } }
         }.show()
     }
 
     private fun selectEmbeddedAudio() {
-        val p = player ?: return
-        val groups = p.currentTracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }
+        val p = player ?: return; val groups = p.currentTracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }
         if (groups.isEmpty()) return
-        val choices = groups.flatMap { group -> (0 until group.length).map { i ->
-            val f = group.getTrackFormat(i)
-            "${f.language ?: "Unknown"}${if (f.label != null) " • ${f.label}" else ""}"
-        } }
+        val choices = groups.flatMap { g -> (0 until g.length).map { i -> g.getTrackFormat(i).language ?: "Unknown" } }
         androidx.appcompat.app.AlertDialog.Builder(this).setTitle("Embedded audio").setItems(choices.toTypedArray()) { _, which ->
             var n = which
             groups.forEach { group ->
                 if (n < group.length) {
-                    p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
-                        .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
-                        .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
-                        .addOverride(TrackSelectionOverride(group.mediaTrackGroup, n)).build()
-                    return@setItems
+                    p.trackSelectionParameters = p.trackSelectionParameters.buildUpon().clearOverridesOfType(C.TRACK_TYPE_AUDIO).setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false).addOverride(TrackSelectionOverride(group.mediaTrackGroup, n)).build(); return@setItems
                 }
                 n -= group.length
             }
@@ -329,33 +244,26 @@ class VideoActivity : AppCompatActivity() {
     }
 
     private fun applyAudioUri(uri: Uri) = applyMergedAudio(uri)
-
     private fun applyAudioUrl(url: String) = applyMergedAudio(Uri.parse(url))
 
     private fun applyMergedAudio(audioUri: Uri) {
-        val p = player ?: return
-        val position = p.currentPosition
-        val wasPlaying = p.isPlaying
+        val p = player ?: return; val position = p.currentPosition; val playing = p.isPlaying
         val factory = DefaultMediaSourceFactory(DefaultDataSource.Factory(this))
         val videoSource = factory.createMediaSource(MediaItem.fromUri(videoUri))
         val audioSource = factory.createMediaSource(MediaItem.fromUri(audioUri))
-        p.setMediaSource(MergingMediaSource(videoSource, audioSource), position)
-        p.prepare()
-        if (wasPlaying) p.play()
+        p.setMediaSource(MergingMediaSource(videoSource, audioSource), position); p.prepare(); if (playing) p.play()
     }
 
     private fun promptForUrl(title: String, onSubmit: (String) -> Unit) {
-        val input = EditText(this).apply { hint = "https://..."; singleLine = true }
+        val input = EditText(this); input.hint = "https://..."; input.setSingleLine(true)
         androidx.appcompat.app.AlertDialog.Builder(this).setTitle(title).setView(input).setNegativeButton("Cancel", null).setPositiveButton("Use") { _, _ ->
-            val value = input.text.toString().trim()
-            if (value.startsWith("https://") || value.startsWith("http://")) onSubmit(value)
+            val value = input.text.toString().trim(); if (value.startsWith("https://") || value.startsWith("http://")) onSubmit(value)
         }.show()
     }
 
     private fun toggleFullscreen() {
         if (Build.VERSION.SDK_INT >= 30) {
-            val controller = window.insetsController ?: return
-            controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            val controller = window.insetsController ?: return; controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             val visible = window.decorView.rootWindowInsets?.isVisible(WindowInsets.Type.systemBars()) ?: true
             if (visible) controller.hide(WindowInsets.Type.systemBars()) else controller.show(WindowInsets.Type.systemBars())
         } else {
@@ -366,36 +274,14 @@ class VideoActivity : AppCompatActivity() {
     }
 
     private fun setLocked(value: Boolean) {
-        locked = value
-        playerView.useController = !locked
-        lockButton.text = if (locked) "🔒" else "🔓"
-        gestureHint.text = if (locked) "Controls locked" else "Controls unlocked"
-        gestureHint.visibility = View.VISIBLE
+        locked = value; playerView.useController = !locked; lockButton.text = if (locked) "🔒" else "🔓"
+        gestureHint.text = if (locked) "Controls locked" else "Controls unlocked"; gestureHint.visibility = View.VISIBLE
         handler.postDelayed({ gestureHint.visibility = View.GONE }, 900L)
     }
 
-    private fun savePosition() {
-        val p = player ?: return
-        if (p.currentPosition > 0L && p.duration != C.TIME_UNSET) prefs.edit().putLong(uriKey, p.currentPosition).apply()
-    }
+    private fun savePosition() { player?.let { if (it.currentPosition > 0L && it.duration != C.TIME_UNSET) prefs.edit().putLong(uriKey, it.currentPosition).apply() } }
+    override fun onPause() { savePosition(); super.onPause() }
+    override fun onStop() { savePosition(); handler.removeCallbacksAndMessages(null); player?.release(); player = null; loudnessEnhancer?.release(); loudnessEnhancer = null; super.onStop() }
 
-    override fun onPause() {
-        savePosition()
-        super.onPause()
-    }
-
-    override fun onStop() {
-        savePosition()
-        handler.removeCallbacksAndMessages(null)
-        player?.release()
-        player = null
-        loudnessEnhancer?.release()
-        loudnessEnhancer = null
-        super.onStop()
-    }
-
-    companion object {
-        const val EXTRA_URI = "video_uri"
-        const val EXTRA_TITLE = "video_title"
-    }
+    companion object { const val EXTRA_URI = "video_uri"; const val EXTRA_TITLE = "video_title" }
 }
