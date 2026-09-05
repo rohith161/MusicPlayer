@@ -21,7 +21,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="MusicPlayer"
+                android:text="VIA Player"
                 android:textColor="@color/mp_foreground"
                 android:textSize="28sp"
                 android:textStyle="bold" />
@@ -172,6 +172,14 @@
             android:orientation="vertical"
             android:padding="24dp"
             android:visibility="gone">
+            <ProgressBar
+                android:id="@+id/onlineProgress"
+                style="?android:attr/progressBarStyleLarge"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginBottom="18dp"
+                android:indeterminate="true"
+                android:visibility="gone" />
             <TextView
                 android:id="@+id/emptyTitle"
                 android:layout_width="wrap_content"
