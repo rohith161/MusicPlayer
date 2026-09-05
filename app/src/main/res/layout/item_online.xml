@@ -1,56 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginBottom="10dp"
-    android:clickable="true"
-    android:focusable="true"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="0dp">
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="76dp"
-        android:gravity="center_vertical"
-        android:padding="14dp">
-        <TextView
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="@color/mp_surface_muted"
-            android:gravity="center"
-            android:text="◎"
-            android:textColor="@color/mp_primary"
-            android:textSize="24sp" />
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="14dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
-            <TextView
-                android:id="@+id/onlineTitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/mp_foreground"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-            <TextView
-                android:id="@+id/onlineCreator"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/mp_foreground_muted"
-                android:textSize="12sp" />
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="10dp"
+    android:clickable="true" android:focusable="true" app:cardCornerRadius="16dp" app:cardElevation="0dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="78dp" android:gravity="center_vertical" android:padding="12dp">
+        <TextView android:layout_width="50dp" android:layout_height="50dp" android:background="@color/mp_surface_muted" android:gravity="center" android:text="♫" android:textColor="@color/mp_primary" android:textSize="24sp" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:orientation="vertical">
+            <TextView android:id="@+id/onlineTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:textColor="@color/mp_foreground" android:textSize="15sp" android:textStyle="bold" />
+            <TextView android:id="@+id/onlineCreator" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:ellipsize="end" android:maxLines="1" android:textColor="@color/mp_foreground_muted" android:textSize="12sp" />
         </LinearLayout>
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="▶"
-            android:textColor="@color/mp_primary"
-            android:textSize="14sp" />
+        <ProgressBar android:id="@+id/onlineDownloadProgress" style="?android:attr/progressBarStyleSmall" android:layout_width="32dp" android:layout_height="32dp" android:max="100" android:visibility="gone" />
+        <ImageButton android:id="@+id/onlineAction" android:layout_width="44dp" android:layout_height="44dp" android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="Song actions" android:src="@android:drawable/ic_menu_more" app:tint="@color/mp_foreground" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
