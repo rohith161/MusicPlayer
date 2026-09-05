@@ -1,4 +1,4 @@
-name: Android Build
+name: Android Build + Firebase Test Lab
 
 on:
   push:
@@ -7,28 +7,123 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+env:
+  GRADLE_VERSION: '8.9'
+  JAVA_VERSION: '17'
+
 jobs:
   build:
+    name: Build APK
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up JDK 17
+
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: ${{ env.JAVA_VERSION }}
           cache: gradle
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: ${{ env.GRADLE_VERSION }}
+
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: MusicPlayer-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+  firebase-robo:
+    name: Firebase Test Lab Robo
+    needs: build
+    if: ${{ github.event_name != 'pull_request' && secrets.FIREBASE_SERVICE_ACCOUNT_JSON != '' && secrets.FIREBASE_PROJECT_ID != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download APK artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: MusicPlayer-debug-apk
+          path: app/build/outputs/apk/debug
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Google Cloud project
+        run: gcloud config set project "${{ secrets.FIREBASE_PROJECT_ID }}"
+
+      - name: Verify Test Lab access
+        run: |
+          gcloud firebase test android versions list --limit=5
+          gcloud firebase test android models list --filter="form=VIRTUAL" --limit=5
+
+      - name: Select available devices for Android 8-16
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/testlab-devices.txt
+          for version in 26 30 34 35 36; do
+            model="$(gcloud firebase test android models list \
+              --filter="form=VIRTUAL AND supportedVersionIds:${version}" \
+              --format="value(id)" --limit=1 | head -n 1)"
+            if [[ -n "$model" ]]; then
+              echo "model=$model,version=$version,locale=en,orientation=portrait" >> /tmp/testlab-devices.txt
+              echo "Selected Android API $version: $model"
+            else
+              echo "No compatible Test Lab virtual device found for API $version; skipping."
+            fi
+          done
+          test -s /tmp/testlab-devices.txt
+          cat /tmp/testlab-devices.txt
+
+      - name: Run Robo tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(
+            --type robo
+            --app app/build/outputs/apk/debug/app-debug.apk
+            --timeout 5m
+            --record-video
+            --client-details "matrixLabel=MusicPlayer-${GITHUB_SHA::7}"
+          )
+          while IFS= read -r device; do
+            args+=(--device "$device")
+          done < /tmp/testlab-devices.txt
+          gcloud firebase test android run "${args[@]}"
+
+      - name: Collect recent Test Lab matrices on failure
+        if: failure()
+        run: |
+          gcloud firebase test android matrices list --limit=5 || true
+
+  firebase-not-configured:
+    name: Firebase configuration check
+    needs: build
+    if: ${{ github.event_name != 'pull_request' && (secrets.FIREBASE_SERVICE_ACCOUNT_JSON == '' || secrets.FIREBASE_PROJECT_ID == '') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain Firebase setup
+        run: |
+          echo "Firebase Test Lab is not configured yet."
+          echo "Add GitHub Actions secrets FIREBASE_PROJECT_ID and FIREBASE_SERVICE_ACCOUNT_JSON to enable cloud testing."
+          echo "The APK build itself completed successfully."
