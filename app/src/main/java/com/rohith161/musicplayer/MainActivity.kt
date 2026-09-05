@@ -110,6 +110,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.videoTab).setOnClickListener { selectMode(Mode.VIDEO) }
         findViewById<TextView>(R.id.onlineTab).setOnClickListener { selectMode(Mode.ONLINE) }
         findViewById<ImageButton>(R.id.backButton).setOnClickListener { showFolders() }
+        // The mini-player is also the entry point back to the full Now Playing screen.
+        miniPlayer.setOnClickListener { openPlayerScreen() }
         searchInput.setOnEditorActionListener { _, actionId, _ ->
             if (mode == Mode.ONLINE && (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE)) {
                 searchOnline(searchInput.text.toString())
@@ -144,10 +146,14 @@ class MainActivity : AppCompatActivity() {
         controllerFuture.addListener({
             try {
                 controller = controllerFuture.get()
+                updateMiniPlayer()
                 controller?.addListener(object : Player.Listener {
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
                         playButton.setImageResource(if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play)
+                        updateMiniPlayer()
                     }
+                    override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) = updateMiniPlayer()
+                    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = updateMiniPlayer()
                     override fun onPlayerError(error: PlaybackException) {
                         Toast.makeText(this@MainActivity, "Can't play this media: ${error.errorCodeName}", Toast.LENGTH_LONG).show()
                     }
@@ -158,10 +164,25 @@ class MainActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun loadLibraries() {
-        if (!hasAudioPermission()) {
-            allTracks = emptyList()
+    private fun updateMiniPlayer() {
+        val player = controller ?: return
+        if (player.currentMediaItem == null) {
+            miniPlayer.visibility = View.GONE
+            return
         }
+        nowTitle.text = player.mediaMetadata.title ?: getString(R.string.unknown_title)
+        nowArtist.text = player.mediaMetadata.artist ?: getString(R.string.unknown_artist)
+        playButton.setImageResource(if (player.isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play)
+        miniPlayer.visibility = View.VISIBLE
+    }
+
+    private fun openPlayerScreen() {
+        if (controller?.currentMediaItem == null) return
+        startActivity(Intent(this, PlayerActivity::class.java))
+    }
+
+    private fun loadLibraries() {
+        if (!hasAudioPermission()) allTracks = emptyList()
         Thread {
             val tracks = if (hasAudioPermission()) repository.loadTracks() else emptyList()
             val videos = if (hasVideoPermission()) videoRepository.loadVideos() else emptyList()
@@ -191,9 +212,7 @@ class MainActivity : AppCompatActivity() {
         val tabs = listOf(R.id.musicTab, R.id.videoTab, R.id.onlineTab)
         tabs.forEach { id ->
             val tab = findViewById<TextView>(id)
-            tab.background = if ((id == R.id.musicTab && mode == Mode.MUSIC) || (id == R.id.videoTab && mode == Mode.VIDEO) || (id == R.id.onlineTab && mode == Mode.ONLINE)) {
-                getDrawable(R.drawable.bg_tab_selected)
-            } else null
+            tab.background = if ((id == R.id.musicTab && mode == Mode.MUSIC) || (id == R.id.videoTab && mode == Mode.VIDEO) || (id == R.id.onlineTab && mode == Mode.ONLINE)) getDrawable(R.drawable.bg_tab_selected) else null
             tab.setTextColor(if (tab.background != null) getColor(R.color.mp_foreground) else getColor(R.color.mp_foreground_muted))
         }
     }
@@ -272,8 +291,7 @@ class MainActivity : AppCompatActivity() {
         onlineProgress.visibility = View.GONE
         when (mode) {
             Mode.MUSIC -> if (currentFolder == null) {
-                val folders = allTracks.groupBy { it.folder }.filter { query.isBlank() || it.key.contains(query, true) }
-                    .toSortedMap(String.CASE_INSENSITIVE_ORDER).map { FolderItem(it.key, it.value.size) }
+                val folders = allTracks.groupBy { it.folder }.filter { query.isBlank() || it.key.contains(query, true) }.toSortedMap(String.CASE_INSENSITIVE_ORDER).map { FolderItem(it.key, it.value.size) }
                 folderAdapter.submitList(folders)
                 setEmpty(folders.isEmpty(), "No folders found", "Try a different search.")
             } else {
@@ -306,8 +324,7 @@ class MainActivity : AppCompatActivity() {
     private fun playTrack(track: Track) {
         val player = controller ?: return
         val items = allTracks.map { item ->
-            MediaItem.Builder().setMediaId(item.id.toString()).setUri(item.uri)
-                .setMediaMetadata(MediaMetadata.Builder().setTitle(item.title).setArtist(item.artist).setAlbumTitle(item.album).build()).build()
+            MediaItem.Builder().setMediaId(item.id.toString()).setUri(item.uri).setMediaMetadata(MediaMetadata.Builder().setTitle(item.title).setArtist(item.artist).setAlbumTitle(item.album).build()).build()
         }
         val index = allTracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
         try {
@@ -317,7 +334,7 @@ class MainActivity : AppCompatActivity() {
             nowTitle.text = track.title
             nowArtist.text = track.artist.ifBlank { getString(R.string.unknown_artist) }
             miniPlayer.visibility = View.VISIBLE
-            startActivity(Intent(this, PlayerActivity::class.java))
+            openPlayerScreen()
         } catch (error: Exception) {
             Toast.makeText(this, "Playback setup failed: ${error.message}", Toast.LENGTH_LONG).show()
         }
@@ -339,7 +356,7 @@ class MainActivity : AppCompatActivity() {
                     nowTitle.text = track.title
                     nowArtist.text = track.creator
                     miniPlayer.visibility = View.VISIBLE
-                    startActivity(Intent(this, PlayerActivity::class.java))
+                    openPlayerScreen()
                 }
             } catch (error: Exception) {
                 runOnUiThread { Toast.makeText(this, "Online playback failed: ${error.message}", Toast.LENGTH_LONG).show() }
