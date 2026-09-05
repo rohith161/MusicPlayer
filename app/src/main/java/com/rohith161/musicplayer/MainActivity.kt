@@ -26,6 +26,7 @@ import androidx.mediarouter.media.MediaRouteSelector
 import com.google.android.material.button.MaterialButton
 import com.google.common.util.concurrent.ListenableFuture
 
+@androidx.media3.common.util.UnstableApi
 class MainActivity : AppCompatActivity() {
     private lateinit var repository: MusicRepository
     private lateinit var adapter: SongAdapter
