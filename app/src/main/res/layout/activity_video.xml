@@ -10,13 +10,7 @@
         android:layout_height="match_parent"
         android:keepScreenOn="true" />
 
-    <!-- Transparent gesture layer: left = brightness, right = volume/boost. -->
-    <View
-        android:id="@+id/videoGestureOverlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@android:color/transparent" />
-
+    <!-- Left/right vertical swipe HUD. PlayerView itself receives the gesture so its controls remain usable. -->
     <TextView
         android:id="@+id/videoGestureHint"
         android:layout_width="wrap_content"
