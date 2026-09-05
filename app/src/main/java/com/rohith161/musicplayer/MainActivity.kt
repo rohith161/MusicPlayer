@@ -5,8 +5,6 @@ import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.view.inputmethod.InputMethodManager
-import android.content.Context
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
@@ -62,6 +60,9 @@ class MainActivity : AppCompatActivity() {
         })
 
         grantButton.setOnClickListener { requestAudioPermissions() }
+        findViewById<ImageButton>(R.id.prevButton).setOnClickListener { controller?.seekToPreviousMediaItem() }
+        findViewById<ImageButton>(R.id.playButton).setOnClickListener { controller?.let { if (it.isPlaying) it.pause() else it.play() } }
+        findViewById<ImageButton>(R.id.nextButton).setOnClickListener { controller?.seekToNextMediaItem() }
 
         connectToPlaybackService()
         loadLibraryIfPermitted()
@@ -139,6 +140,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        if (::controllerFuture.isInitialized) controllerFuture.cancel(true)
         controller?.release()
         controller = null
         super.onDestroy()
