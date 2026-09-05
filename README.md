@@ -1,31 +1,36 @@
-# 🎵 MusicPlayer
+# 🎬 VIA Player
 
-A modern, lightweight Android music player focused on a clean user experience and reliable local music playback.
+**VIA Player — Versatile Integrated Audio-Video Player**
+
+A modern, lightweight Android media player for local music, local videos, and supported online audio, with a clean premium interface and reliable playback architecture.
 
 ## 📱 About
 
-MusicPlayer is a native Android application designed to play music stored on your device. The project aims to provide a simple and responsive player while maintaining compatibility across a wide range of Android versions.
+VIA Player is a native Android application designed to bring **music and video playback into one player**. It provides folder-based local media browsing, background audio playback, video playback, media controls, Bluetooth/wired audio support, and an online audio discovery mode.
 
 The application is being developed with support for **Android 8.0 through Android 16**.
 
 ## ✨ Features
 
-- 🎵 Browse and play music stored on the device
+- 🎵 Browse and play local music
+- 🎬 Browse and play local videos
+- 📁 Folder-first music library
 - ▶️ Play, pause, previous, and next controls
-- ⏩ Seek through tracks
+- ⏩ Seek through audio and video
 - 🔀 Shuffle and repeat playback
-- 📚 Music library for songs, albums, and artists
+- 📚 Library browsing and search
 - 🔔 Media notification with playback controls
-- 📱 Background music playback
-- 🔊 Support for Bluetooth and wired audio devices
-- 🎨 Clean and responsive Android UI
+- 📱 Background audio playback
+- 🔊 Bluetooth and wired audio support
+- 📺 Media output / route selection
+- 🌐 Browse and stream supported open online audio
+- 🎨 Premium dark/light-friendly Android UI
+- 🧩 Media3 playback architecture with decoder fallback
 
 ## 📱 Android Compatibility
 
 - **Minimum:** Android 8.0 (API 26)
 - **Target:** Android 16
-
-The goal is to provide consistent playback and a smooth experience across supported Android versions.
 
 ## 🏗️ Project Status
 
@@ -35,7 +40,7 @@ The project is actively being developed. Features, UI, playback architecture, an
 
 ## 🛠️ Development
 
-The project is built as a native Android application using **Android Studio** and the **Gradle** build system.
+The project is built as a native Android application using **Kotlin**, **Android Studio**, **Gradle**, and **AndroidX Media3**.
 
 ### Getting Started
 
@@ -47,16 +52,17 @@ The project is built as a native Android application using **Android Studio** an
 
 ## 🗺️ Roadmap
 
-- [ ] Complete music library scanning
-- [ ] Implement reliable background playback
-- [ ] Add media notification controls
-- [ ] Add playlists and favorites
-- [ ] Improve Bluetooth audio support
-- [ ] Add Android Auto / Automotive support
-- [ ] Polish player and library UI
-- [x] Add automated testing
-- [x] Set up GitHub Actions for APK builds
-- [x] Set up automated Firebase Test Lab Robo testing
+- [x] Local music browsing and playback
+- [x] Local video browsing and playback
+- [x] Background playback architecture
+- [x] Media notification controls
+- [x] Online open-audio browsing
+- [x] Automated unit tests, lint, and GitHub Actions APK builds
+- [ ] Playlists and favorites
+- [ ] Improved artwork and metadata handling
+- [ ] Advanced queue management
+- [ ] Android Auto / Automotive support
+- [ ] Optional additional online media sources
 
 ## 🤝 Contributing
 
