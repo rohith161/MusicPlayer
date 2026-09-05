@@ -53,7 +53,8 @@ class VideoActivity : AppCompatActivity() {
         lockButton = findViewById(R.id.videoLockButton)
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
-        val uri = intent.getStringExtra(EXTRA_URI)?.let(Uri::parse) ?: run {
+        val uri = intent.getStringExtra(EXTRA_URI)?.let(Uri::parse)
+        if (uri == null) {
             finish()
             return
         }
@@ -89,7 +90,6 @@ class VideoActivity : AppCompatActivity() {
 
         fullscreenButton.setOnClickListener { toggleFullscreen() }
         lockButton.setOnClickListener { setLocked(!locked) }
-
         playerView.setOnTouchListener { _, event -> handleGesture(event) }
     }
 
@@ -98,7 +98,7 @@ class VideoActivity : AppCompatActivity() {
         val width = playerView.width
         if (width <= 0) return false
 
-        when (event.actionMasked) {
+        return when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 startY = event.y
                 gestureStartVolume = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0
@@ -110,10 +110,12 @@ class VideoActivity : AppCompatActivity() {
             MotionEvent.ACTION_MOVE -> {
                 val delta = startY - event.y
                 if (!gestureActive && abs(delta) > 12f) gestureActive = true
-                if (!gestureActive) return false
-                if (gestureSide > 0) adjustVolume(delta, playerView.height.toFloat())
-                else adjustBrightness(delta, playerView.height.toFloat())
-                true
+                if (!gestureActive) false
+                else {
+                    if (gestureSide > 0) adjustVolume(delta, playerView.height.toFloat())
+                    else adjustBrightness(delta, playerView.height.toFloat())
+                    true
+                }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (gestureActive) {
