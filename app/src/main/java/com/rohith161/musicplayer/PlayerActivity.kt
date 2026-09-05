@@ -79,7 +79,6 @@ class PlayerActivity : AppCompatActivity() {
                     override fun onIsPlayingChanged(isPlaying: Boolean) = updateNowPlaying()
                     override fun onMediaMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) = updateNowPlaying()
                     override fun onPlaybackStateChanged(playbackState: Int) = updateProgress()
-                    override fun onPositionDiscontinuity(mediaItemTransition: Player.PositionInfo, oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) = updateProgress()
                 })
             } catch (_: Exception) {
                 finish()
