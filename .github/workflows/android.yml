@@ -134,7 +134,8 @@ jobs:
           done < /tmp/testlab-devices.txt
           gcloud firebase test android run "${args[@]}"
 
-      - name: Collect recent Test Lab matrices on failure
+      - name: Print Test Lab help on failure
         if: failure() && steps.firebase-config.outputs.configured == 'true'
         run: |
-          gcloud firebase test android matrices list --limit=5 || true
+          echo "Firebase Test Lab failed. Showing supported Android Test Lab commands for diagnostics."
+          gcloud firebase test android --help | sed -n '1,220p' || true
