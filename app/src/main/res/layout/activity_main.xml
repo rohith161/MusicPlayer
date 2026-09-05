@@ -14,11 +14,8 @@
         <androidx.mediarouter.app.MediaRouteButton android:id="@+id/mediaOutputButton" android:layout_width="48dp" android:layout_height="48dp" android:contentDescription="@string/media_output" app:mediaRouteButtonTint="@color/mp_foreground" />
     </LinearLayout>
 
-    <EditText android:id="@+id/searchInput" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="12dp" android:backgroundTint="@color/mp_border" android:hint="@string/search_music" android:imeOptions="actionSearch" android:inputType="text" android:maxLines="1" android:paddingStart="16dp" android:paddingEnd="16dp" android:singleLine="true" android:textColor="@color/mp_foreground" android:textColorHint="@color/mp_foreground_muted" android:textSize="15sp" android:visibility="gone" />
-
-    <LinearLayout android:id="@+id/searchControls" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="8dp" android:gravity="center_vertical" android:visibility="gone">
-        <TextView android:id="@+id/localSearchToggle" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="Local" android:textSize="13sp" android:textStyle="bold" />
-        <TextView android:id="@+id/onlineSearchToggle" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="Online" android:textSize="13sp" />
+    <LinearLayout android:id="@+id/searchControls" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="10dp" android:gravity="center_vertical" android:visibility="gone">
+        <EditText android:id="@+id/searchInput" android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1" android:backgroundTint="@color/mp_border" android:hint="@string/search_music" android:imeOptions="actionSearch" android:inputType="text" android:maxLines="1" android:paddingStart="16dp" android:paddingEnd="16dp" android:singleLine="true" android:textColor="@color/mp_foreground" android:textColorHint="@color/mp_foreground_muted" android:textSize="15sp" />
         <Button android:id="@+id/searchButton" android:layout_width="wrap_content" android:layout_height="44dp" android:layout_marginStart="8dp" android:minWidth="0dp" android:text="Search" />
     </LinearLayout>
 
@@ -33,7 +30,6 @@
         <androidx.recyclerview.widget.RecyclerView android:id="@+id/videoList" android:layout_width="match_parent" android:layout_height="match_parent" android:clipToPadding="false" android:paddingBottom="12dp" android:visibility="gone" />
         <androidx.recyclerview.widget.RecyclerView android:id="@+id/onlineList" android:layout_width="match_parent" android:layout_height="match_parent" android:clipToPadding="false" android:paddingBottom="12dp" android:visibility="gone" />
         <LinearLayout android:id="@+id/emptyState" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical" android:padding="24dp" android:visibility="gone">
-            <ProgressBar android:id="@+id/onlineProgress" style="?android:attr/progressBarStyleLarge" android:layout_width="48dp" android:layout_height="48dp" android:layout_marginBottom="18dp" android:indeterminate="true" android:visibility="gone" />
             <TextView android:id="@+id/emptyTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/no_music" android:textColor="@color/mp_foreground" android:textSize="19sp" android:textStyle="bold" />
             <TextView android:id="@+id/emptySubtitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:gravity="center" android:text="@string/grant_audio_permission" android:textColor="@color/mp_foreground_muted" />
             <Button android:id="@+id/grantPermissionButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/grant_permission" />
@@ -41,7 +37,7 @@
     </FrameLayout>
 
     <LinearLayout android:id="@+id/miniPlayer" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="8dp" android:background="@color/mp_surface" android:elevation="6dp" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="14dp" android:paddingTop="10dp" android:paddingEnd="8dp" android:paddingBottom="10dp" android:visibility="gone">
-        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+        <LinearLayout android:id="@+id/miniPlayerInfo" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
             <TextView android:id="@+id/nowTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:textColor="@color/mp_foreground" android:textSize="15sp" android:textStyle="bold" />
             <TextView android:id="@+id/nowArtist" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:ellipsize="end" android:maxLines="1" android:textColor="@color/mp_foreground_muted" android:textSize="12sp" />
         </LinearLayout>
