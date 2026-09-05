@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
@@ -16,20 +17,24 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import androidx.mediarouter.media.MediaControlIntent
+import androidx.mediarouter.media.MediaRouteSelector
+import com.google.android.material.button.MaterialButton
 import com.google.common.util.concurrent.ListenableFuture
 
 class MainActivity : AppCompatActivity() {
     private lateinit var repository: MusicRepository
     private lateinit var adapter: SongAdapter
-    private lateinit var songList: RecyclerView
+    private lateinit var songList: androidx.recyclerview.widget.RecyclerView
     private lateinit var emptyState: LinearLayout
     private lateinit var miniPlayer: LinearLayout
     private lateinit var nowTitle: TextView
     private lateinit var nowArtist: TextView
+    private lateinit var playButton: ImageButton
     private lateinit var controllerFuture: ListenableFuture<MediaController>
     private var controller: MediaController? = null
     private var allTracks: List<Track> = emptyList()
@@ -48,12 +53,21 @@ class MainActivity : AppCompatActivity() {
         miniPlayer = findViewById(R.id.miniPlayer)
         nowTitle = findViewById(R.id.nowTitle)
         nowArtist = findViewById(R.id.nowArtist)
+        playButton = findViewById(R.id.playButton)
         val searchInput: EditText = findViewById(R.id.searchInput)
         val grantButton: Button = findViewById(R.id.grantPermissionButton)
 
         adapter = SongAdapter { playTrack(it) }
-        songList.layoutManager = LinearLayoutManager(this)
+        songList.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
         songList.adapter = adapter
+
+        // Android's MediaRouter exposes the system audio routes, including
+        // phone speaker and compatible Bluetooth / cast / car routes.
+        findViewById<androidx.mediarouter.app.MediaRouteButton>(R.id.mediaOutputButton).routeSelector =
+            MediaRouteSelector.Builder()
+                .addControlCategory(MediaControlIntent.CATEGORY_LIVE_AUDIO)
+                .addControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK)
+                .build()
 
         searchInput.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -68,7 +82,7 @@ class MainActivity : AppCompatActivity() {
 
         grantButton.setOnClickListener { requestAudioPermissions() }
         findViewById<ImageButton>(R.id.prevButton).setOnClickListener { controller?.seekToPreviousMediaItem() }
-        findViewById<ImageButton>(R.id.playButton).setOnClickListener { controller?.let { if (it.isPlaying) it.pause() else it.play() } }
+        playButton.setOnClickListener { controller?.let { if (it.isPlaying) it.pause() else it.play() } }
         findViewById<ImageButton>(R.id.nextButton).setOnClickListener { controller?.seekToNextMediaItem() }
 
         connectToPlaybackService()
@@ -81,6 +95,22 @@ class MainActivity : AppCompatActivity() {
         controllerFuture.addListener({
             try {
                 controller = controllerFuture.get()
+                controller?.addListener(object : Player.Listener {
+                    override fun onIsPlayingChanged(isPlaying: Boolean) {
+                        playButton.setImageResource(
+                            if (isPlaying) android.R.drawable.ic_media_pause
+                            else android.R.drawable.ic_media_play
+                        )
+                    }
+
+                    override fun onPlayerError(error: PlaybackException) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Can't play this file: ${error.errorCodeName}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                })
             } catch (_: Exception) {
                 Toast.makeText(this, "Unable to start playback service", Toast.LENGTH_SHORT).show()
             }
@@ -89,8 +119,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadLibraryIfPermitted() {
         if (!hasAudioPermission()) {
-            emptyState.visibility = android.view.View.VISIBLE
-            songList.visibility = android.view.View.GONE
+            emptyState.visibility = View.VISIBLE
+            songList.visibility = View.GONE
             return
         }
 
@@ -99,8 +129,8 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 allTracks = tracks
                 adapter.submitList(tracks)
-                emptyState.visibility = if (tracks.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
-                songList.visibility = if (tracks.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
+                emptyState.visibility = if (tracks.isEmpty()) View.VISIBLE else View.GONE
+                songList.visibility = if (tracks.isEmpty()) View.GONE else View.VISIBLE
             }
         }.start()
     }
@@ -124,6 +154,7 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Player is still starting", Toast.LENGTH_SHORT).show()
             return
         }
+
         val items = allTracks.map { item ->
             MediaItem.Builder()
                 .setMediaId(item.id.toString())
@@ -138,12 +169,17 @@ class MainActivity : AppCompatActivity() {
                 .build()
         }
         val index = allTracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
-        player.setMediaItems(items, index, 0L)
-        player.prepare()
-        player.play()
-        nowTitle.text = track.title
-        nowArtist.text = track.artist
-        miniPlayer.visibility = android.view.View.VISIBLE
+
+        try {
+            player.setMediaItems(items, index, 0L)
+            player.prepare()
+            player.play()
+            nowTitle.text = track.title
+            nowArtist.text = if (track.artist.isBlank()) getString(R.string.unknown_artist) else track.artist
+            miniPlayer.visibility = View.VISIBLE
+        } catch (error: Exception) {
+            Toast.makeText(this, "Playback setup failed: ${error.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onDestroy() {
