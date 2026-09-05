@@ -9,6 +9,7 @@ import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -49,12 +50,11 @@ class PlayerActivity : AppCompatActivity() {
         progress.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, value: Int, fromUser: Boolean) {
                 if (!fromUser) return
-                val player = controller ?: return
-                val duration = player.duration
-                if (duration != Player.TIME_UNSET && duration > 0) {
+                val mediaController = controller ?: return
+                val duration = mediaController.duration
+                if (duration != C.TIME_UNSET && duration > 0) {
                     val position = duration * value.toLong() / 1000L
-                    // Update the player's actual position while dragging so online streams visibly seek.
-                    player.seekTo(position)
+                    mediaController.seekTo(position)
                 }
             }
 
@@ -79,7 +79,7 @@ class PlayerActivity : AppCompatActivity() {
                     override fun onIsPlayingChanged(isPlaying: Boolean) = updateNowPlaying()
                     override fun onMediaMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) = updateNowPlaying()
                     override fun onPlaybackStateChanged(playbackState: Int) = updateProgress()
-                    override fun onPositionDiscontinuity(reason: Player.PositionInfo, oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo) = updateProgress()
+                    override fun onPositionDiscontinuity(mediaItemTransition: Player.PositionInfo, oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) = updateProgress()
                 })
             } catch (_: Exception) {
                 finish()
@@ -88,19 +88,19 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun updateNowPlaying() {
-        val player = controller ?: return
-        title.text = player.mediaMetadata.title ?: getString(R.string.unknown_title)
-        artist.text = player.mediaMetadata.artist ?: getString(R.string.unknown_artist)
-        play.setImageResource(if (player.isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play)
+        val mediaController = controller ?: return
+        title.text = mediaController.mediaMetadata.title ?: getString(R.string.unknown_title)
+        artist.text = mediaController.mediaMetadata.artist ?: getString(R.string.unknown_artist)
+        play.setImageResource(if (mediaController.isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play)
     }
 
     private fun updateProgress() {
-        val player = controller ?: return
+        val mediaController = controller ?: return
         if (userSeeking) return
-        val duration = player.duration
-        val position = player.currentPosition
-        progress.isEnabled = duration != Player.TIME_UNSET && duration > 0
-        progress.progress = if (duration != Player.TIME_UNSET && duration > 0) {
+        val duration = mediaController.duration
+        val position = mediaController.currentPosition
+        progress.isEnabled = duration != C.TIME_UNSET && duration > 0
+        progress.progress = if (duration != C.TIME_UNSET && duration > 0) {
             ((position.coerceIn(0L, duration) * 1000L) / duration).toInt()
         } else {
             0
