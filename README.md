@@ -54,8 +54,9 @@ The project is built as a native Android application using **Android Studio** an
 - [ ] Improve Bluetooth audio support
 - [ ] Add Android Auto / Automotive support
 - [ ] Polish player and library UI
-- [ ] Add automated testing
-- [ ] Set up GitHub Actions for APK builds
+- [x] Add automated testing
+- [x] Set up GitHub Actions for APK builds
+- [x] Set up automated Firebase Test Lab Robo testing
 
 ## 🤝 Contributing
 
