@@ -6,10 +6,21 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      run_robo:
+        description: 'Run Firebase Test Lab Robo test'
+        required: false
+        default: true
+        type: boolean
 
 env:
   GRADLE_VERSION: '8.9'
   JAVA_VERSION: '17'
+
+# Avoid burning Test Lab time on obsolete queued runs when several commits land quickly.
+concurrency:
+  group: musicplayer-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -46,7 +57,13 @@ jobs:
   firebase-robo:
     name: Firebase Test Lab Robo
     needs: build
-    if: ${{ github.event_name != 'pull_request' }}
+    # Never run cloud tests for pull requests. Pushes to main run automatically;
+    # workflow_dispatch can explicitly turn Robo testing off.
+    if: >-
+      ${{
+        github.event_name != 'pull_request' &&
+        (github.event_name != 'workflow_dispatch' || inputs.run_robo == true)
+      }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -97,13 +114,17 @@ jobs:
           gcloud firebase test android versions list --limit=5
           gcloud firebase test android models list --filter="form=VIRTUAL" --limit=5
 
-      - name: Select available devices for Android 8-16
+      - name: Select low-cost virtual devices
         if: steps.firebase-config.outputs.configured == 'true'
         shell: bash
         run: |
           set -euo pipefail
           : > /tmp/testlab-devices.txt
-          for version in 26 30 34 35 36; do
+
+          # Two representative virtual devices are enough for the automated smoke test.
+          # This keeps one run comfortably below the 60 virtual-device-minutes/day
+          # no-cost allowance on Blaze, assuming the 3-minute timeout is reached.
+          for version in 34 36; do
             model="$(gcloud firebase test android models list \
               --filter="form=VIRTUAL AND supportedVersionIds:${version}" \
               --format="value(id)" --limit=1 | head -n 1)"
@@ -114,10 +135,11 @@ jobs:
               echo "No compatible Test Lab virtual device found for API $version; skipping."
             fi
           done
+
           test -s /tmp/testlab-devices.txt
           cat /tmp/testlab-devices.txt
 
-      - name: Run Robo tests
+      - name: Run short Robo smoke test
         if: steps.firebase-config.outputs.configured == 'true'
         shell: bash
         run: |
@@ -125,7 +147,7 @@ jobs:
           args=(
             --type robo
             --app app/build/outputs/apk/debug/app-debug.apk
-            --timeout 5m
+            --timeout 3m
             --record-video
             --client-details "matrixLabel=MusicPlayer-${GITHUB_SHA::7}"
           )
