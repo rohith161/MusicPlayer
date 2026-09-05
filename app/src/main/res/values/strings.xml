@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">MusicPlayer</string>
-    <string name="search_music">Search music</string>
+    <string name="search_music">Search music, videos, or online audio</string>
     <string name="music_library">Music library</string>
     <string name="your_folders">Your folders</string>
     <string name="folders_subtitle">Your music, organized by folder</string>
     <string name="folder_subtitle">Songs in this folder</string>
+    <string name="local_videos">Local videos</string>
+    <string name="videos_subtitle">Videos stored on your device</string>
+    <string name="online_music">Online music</string>
+    <string name="online_subtitle">Discover open audio and stream it in MusicPlayer</string>
     <string name="no_music">No music found</string>
     <string name="grant_audio_permission">Allow MusicPlayer to access your music to build the library.</string>
-    <string name="permission_required">Music permission required</string>
-    <string name="grant_permission">Grant permission</string>
+    <string name="permission_required">Media permission required</string>
+    <string name="grant_permission">Grant access</string>
     <string name="unknown_title">Unknown title</string>
     <string name="unknown_artist">Unknown artist</string>
     <string name="media_output">Media output</string>
