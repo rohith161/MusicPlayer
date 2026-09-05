@@ -46,37 +46,59 @@ jobs:
   firebase-robo:
     name: Firebase Test Lab Robo
     needs: build
-    if: ${{ github.event_name != 'pull_request' && secrets.FIREBASE_SERVICE_ACCOUNT_JSON != '' && secrets.FIREBASE_PROJECT_ID != '' }}
+    if: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
     steps:
+      - name: Check Firebase configuration
+        id: firebase-config
+        shell: bash
+        run: |
+          if [[ -n "${FIREBASE_PROJECT_ID}" && -n "${FIREBASE_SERVICE_ACCOUNT_JSON}" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "Firebase Test Lab CI credentials are configured."
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Firebase Test Lab is not configured yet; cloud tests will be skipped."
+          fi
+
       - name: Checkout
+        if: steps.firebase-config.outputs.configured == 'true'
         uses: actions/checkout@v4
 
       - name: Download APK artifact
+        if: steps.firebase-config.outputs.configured == 'true'
         uses: actions/download-artifact@v5
         with:
           name: MusicPlayer-debug-apk
           path: app/build/outputs/apk/debug
 
       - name: Authenticate to Google Cloud
+        if: steps.firebase-config.outputs.configured == 'true'
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
 
       - name: Set up gcloud
+        if: steps.firebase-config.outputs.configured == 'true'
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Google Cloud project
-        run: gcloud config set project "${{ secrets.FIREBASE_PROJECT_ID }}"
+        if: steps.firebase-config.outputs.configured == 'true'
+        run: gcloud config set project "${FIREBASE_PROJECT_ID}"
 
       - name: Verify Test Lab access
+        if: steps.firebase-config.outputs.configured == 'true'
         run: |
           gcloud firebase test android versions list --limit=5
           gcloud firebase test android models list --filter="form=VIRTUAL" --limit=5
 
       - name: Select available devices for Android 8-16
+        if: steps.firebase-config.outputs.configured == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -96,6 +118,7 @@ jobs:
           cat /tmp/testlab-devices.txt
 
       - name: Run Robo tests
+        if: steps.firebase-config.outputs.configured == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -112,18 +135,6 @@ jobs:
           gcloud firebase test android run "${args[@]}"
 
       - name: Collect recent Test Lab matrices on failure
-        if: failure()
+        if: failure() && steps.firebase-config.outputs.configured == 'true'
         run: |
           gcloud firebase test android matrices list --limit=5 || true
-
-  firebase-not-configured:
-    name: Firebase configuration check
-    needs: build
-    if: ${{ github.event_name != 'pull_request' && (secrets.FIREBASE_SERVICE_ACCOUNT_JSON == '' || secrets.FIREBASE_PROJECT_ID == '') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Explain Firebase setup
-        run: |
-          echo "Firebase Test Lab is not configured yet."
-          echo "Add GitHub Actions secrets FIREBASE_PROJECT_ID and FIREBASE_SERVICE_ACCOUNT_JSON to enable cloud testing."
-          echo "The APK build itself completed successfully."
