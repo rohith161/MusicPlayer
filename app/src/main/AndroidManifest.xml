@@ -11,8 +11,9 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@android:drawable/ic_media_play"
-        android:label="MusicPlayer"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
         android:supportsRtl="true"
         android:usesCleartextTraffic="false"
         android:theme="@style/Theme.MusicPlayer">
