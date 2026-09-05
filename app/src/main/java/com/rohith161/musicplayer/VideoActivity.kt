@@ -1,16 +1,15 @@
 package com.rohith161.musicplayer
 
 import android.content.Context
-import android.graphics.Color
 import android.media.AudioManager
 import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
-import android.view.WindowManager
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
@@ -51,29 +50,22 @@ class VideoActivity : AppCompatActivity() {
         exoPlayer.addListener(object : androidx.media3.common.Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
                 loudnessEnhancer?.release()
-                loudnessEnhancer = if (audioSessionId != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) {
-                    runCatching {
-                        LoudnessEnhancer(audioSessionId).apply {
-                            // Positive gain provides a real volume-boost path above the device max.
-                            setTargetGain(6000)
-                            enabled = true
-                        }
-                    }.getOrNull()
+                loudnessEnhancer = if (audioSessionId != C.AUDIO_SESSION_ID_UNSET) {
+                    runCatching { LoudnessEnhancer(audioSessionId).apply { enabled = true } }.getOrNull()
                 } else {
                     null
                 }
             }
         })
 
-        findViewById<View>(R.id.videoGestureOverlay).setOnTouchListener { _, event ->
-            handleGesture(event)
-            true
-        }
+        // Keep normal PlayerView taps/controls working. Once a vertical swipe is detected,
+        // consume the gesture and use the left/right side for brightness/volume.
+        playerView.setOnTouchListener { _, event -> handleGesture(event) }
     }
 
-    private fun handleGesture(event: MotionEvent) {
-        val width = findViewById<View>(R.id.videoGestureOverlay).width
-        if (width <= 0) return
+    private fun handleGesture(event: MotionEvent): Boolean {
+        val width = findViewById<PlayerView>(R.id.videoPlayerView).width
+        if (width <= 0) return false
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -82,46 +74,55 @@ class VideoActivity : AppCompatActivity() {
                 gestureStartBrightness = window.attributes.screenBrightness.takeIf { it >= 0f } ?: 0.5f
                 gestureSide = if (event.x >= width / 2f) 1 else -1
                 gestureActive = false
-                true
+                // Let PlayerView receive the initial down event for normal taps.
+                false
             }
             MotionEvent.ACTION_MOVE -> {
                 val delta = startY - event.y
                 if (!gestureActive && abs(delta) > 12f) gestureActive = true
-                if (!gestureActive) return
+                if (!gestureActive) return false
 
                 if (gestureSide > 0) {
-                    adjustVolume(delta, width.toFloat())
+                    adjustVolume(delta, heightReference = findViewById<PlayerView>(R.id.videoPlayerView).height.toFloat())
                 } else {
-                    adjustBrightness(delta, width.toFloat())
+                    adjustBrightness(delta, heightReference = findViewById<PlayerView>(R.id.videoPlayerView).height.toFloat())
                 }
                 true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (gestureActive) showGestureHint("")
-                gestureActive = false
-                true
+                if (gestureActive) {
+                    showGestureHint("")
+                    gestureActive = false
+                    true
+                } else {
+                    false
+                }
             }
-            else -> true
+            else -> gestureActive
         }
     }
 
     private fun adjustVolume(delta: Float, heightReference: Float) {
         val manager = audioManager ?: return
         val max = manager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
-        val step = ((delta / (heightReference * 0.55f)) * max).roundToInt()
+        val reference = heightReference.coerceAtLeast(1f)
+        val step = ((delta / (reference * 0.55f)) * max).roundToInt()
         val target = (gestureStartVolume + step).coerceIn(0, max)
         manager.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
 
         val percent = (target * 100f / max).roundToInt()
         if (percent >= 100) {
-            showGestureHint("Volume $percent% • Boost +6 dB")
+            // Above the Android stream maximum, use a small software gain boost.
+            loudnessEnhancer?.setTargetGain(6000)
+            showGestureHint("Volume 100% • Boost +6 dB")
         } else {
+            loudnessEnhancer?.setTargetGain(0)
             showGestureHint("Volume $percent%")
         }
     }
 
     private fun adjustBrightness(delta: Float, heightReference: Float) {
-        val change = delta / (heightReference * 0.9f)
+        val change = delta / (heightReference.coerceAtLeast(1f) * 0.9f)
         val brightness = (gestureStartBrightness + change).coerceIn(0.02f, 1f)
         val params = window.attributes
         params.screenBrightness = brightness
