@@ -8,10 +8,10 @@ import androidx.media3.common.util.UnstableApi
  * Search-tab UI entry point kept separate so the main HomeActivity stays focused on playback/navigation.
  *
  * HomeActivity is explicitly marked with Media3's UnstableApi because it owns MediaController
- * integration. This extension invokes that Activity type, so it must opt into the same API
- * contract for Android lint to accept the declaration.
+ * integration. Media3's UnstableApi in this dependency is a declaration annotation rather than
+ * a Kotlin RequiresOptIn marker, so the extension must carry the annotation directly.
  */
-@OptIn(UnstableApi::class)
+@UnstableApi
 fun HomeActivity.showSearch() {
     findViewById<View>(R.id.searchControls).visibility = View.VISIBLE
     findViewById<View>(R.id.folderHeader).visibility = View.GONE
