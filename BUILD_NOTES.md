@@ -24,6 +24,22 @@ The video player provides touch controls so playback can be adjusted without ope
 ### How it works
 `VideoActivity` receives touch events from the `PlayerView`. A three-second long press activates the speed gesture and uses `Vibrator`/`VibratorManager` for haptic feedback. Vertical movement is mapped to volume or screen-brightness changes depending on which half of the video was touched. Playback speed is constrained to the supported 1x/2x/3x/4x steps.
 
+## Search tab Media3 lint fix
+
+### Error
+Android CI run #123 passed unit-test compilation but failed in `lintDebug`. Lint reported `UnsafeOptInUsageError` at `HomeActivitySearch.kt:7` because `HomeActivity` is annotated with Media3 `UnstableApi`, while the `showSearch()` extension declaration did not explicitly opt into that API.
+
+### Fix
+Added `@OptIn(UnstableApi::class)` to the `HomeActivity.showSearch()` extension and imported `androidx.media3.common.util.UnstableApi`.
+
+This is an explicit API opt-in, not a lint suppression. It tells the compiler and lint that the search extension intentionally operates on the same Media3-unstable `HomeActivity` API contract.
+
+### Why the feature exists
+The search UI is separated from `HomeActivity.kt` so the main Activity can remain focused on navigation, playback, permissions, and media-library state while the search-tab presentation remains isolated.
+
+### How it works
+`HomeActivity` remains the owner of Media3 `MediaController` integration and calls `showSearch()` when the Search tab is selected. The extension only updates search controls, hides the folder header, and changes the title/subtitle. Because its receiver is the Media3-annotated `HomeActivity`, the extension now explicitly opts into `UnstableApi`.
+
 ## CI policy
 For future changes, commit messages will use:
 
