@@ -2,7 +2,17 @@
 <resources>
     <style name="Theme.MusicPlayer" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
-        <item name="android:navigationBarColor">?android:colorBackground</item>
+        <item name="android:colorAccent">@color/mp_primary</item>
+        <item name="android:windowBackground">@color/mp_background</item>
+        <item name="android:navigationBarColor">@color/mp_background</item>
+        <item name="android:statusBarColor">@color/mp_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="colorPrimary">@color/mp_primary</item>
+        <item name="colorOnPrimary">@color/mp_primary_foreground</item>
+        <item name="colorSurface">@color/mp_surface</item>
+        <item name="colorOnSurface">@color/mp_foreground</item>
+        <item name="colorSurfaceVariant">@color/mp_surface_muted</item>
+        <item name="colorOnSurfaceVariant">@color/mp_foreground_muted</item>
+        <item name="colorOutline">@color/mp_border</item>
     </style>
 </resources>
