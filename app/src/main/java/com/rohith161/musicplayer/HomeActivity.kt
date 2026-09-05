@@ -9,7 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
-import android.view.inputmethod.EditorInfo
+import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -20,7 +20,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.mediarouter.media.MediaControlIntent
@@ -117,13 +116,13 @@ class HomeActivity : AppCompatActivity() {
         ids.forEach { id -> val v = findViewById<TextView>(id); v.background = if ((mode == Mode.VIDEO && id == R.id.videoTab) || (mode == Mode.MUSIC && id == R.id.musicTab) || (mode == Mode.PLAYLIST && id == R.id.onlineTab)) getDrawable(R.drawable.bg_tab_selected) else null }
     }
 
-    private fun showFolders() { showOnly(folderList); findViewById<TextView>(R.id.screenTitle).text = "YOUR MUSIC"; findViewById<TextView>(R.id.screenSubtitle).text = getString(R.string.folders_subtitle); val list = tracks.groupBy { it.folder }.map { FolderItem(it.key, it.value.size) }; folderAdapter.submitList(list); setEmpty(list.isEmpty(), "No music found", "Your local music will appear here.") }
+    private fun showFolders() { searchInput.visibility = View.GONE; switcher?.visibility = View.GONE; showOnly(folderList); findViewById<TextView>(R.id.screenTitle).text = "YOUR MUSIC"; findViewById<TextView>(R.id.screenSubtitle).text = getString(R.string.folders_subtitle); val list = tracks.groupBy { it.folder }.map { FolderItem(it.key, it.value.size) }; folderAdapter.submitList(list); setEmpty(list.isEmpty(), "No music found", "Your local music will appear here.") }
     private fun openFolder(folder: String) { currentFolder = folder; findViewById<View>(R.id.folderHeader).visibility = View.VISIBLE; showOnly(songList); val list = tracks.filter { it.folder == folder }; songAdapter.submitList(list); setEmpty(list.isEmpty(), "Folder is empty", "No playable music was found here.") }
-    private fun showVideos() { showOnly(videoList); findViewById<TextView>(R.id.screenTitle).text = "VIDEO"; findViewById<TextView>(R.id.screenSubtitle).text = getString(R.string.videos_subtitle); videoAdapter.submitList(videos); setEmpty(videos.isEmpty(), "No videos found", "Your local videos will appear here.") }
-    private fun showPlaylist() { showOnly(onlineList); findViewById<TextView>(R.id.screenTitle).text = "PLAYLIST"; findViewById<TextView>(R.id.screenSubtitle).text = "Saved online songs"; val list = playlistRepository.getAll(); onlineAdapter.submitList(list); setEmpty(list.isEmpty(), "Playlist is empty", "Save online songs from Search to keep them here.") }
+    private fun showVideos() { searchInput.visibility = View.GONE; switcher?.visibility = View.GONE; showOnly(videoList); findViewById<TextView>(R.id.screenTitle).text = "VIDEO"; findViewById<TextView>(R.id.screenSubtitle).text = getString(R.string.videos_subtitle); videoAdapter.submitList(videos); setEmpty(videos.isEmpty(), "No videos found", "Your local videos will appear here.") }
+    private fun showPlaylist() { searchInput.visibility = View.GONE; switcher?.visibility = View.GONE; showOnly(onlineList); findViewById<TextView>(R.id.screenTitle).text = "PLAYLIST"; findViewById<TextView>(R.id.screenSubtitle).text = "Saved online songs"; val list = playlistRepository.getAll(); onlineAdapter.submitList(list); setEmpty(list.isEmpty(), "Playlist is empty", "Save online songs from Search to keep them here.") }
     private fun showSearch() { searchInput.visibility = View.VISIBLE; showOnly(onlineList); findViewById<TextView>(R.id.screenTitle).text = "SEARCH"; findViewById<TextView>(R.id.screenSubtitle).text = if (searchOnline) "Online open audio" else "Local music"; ensureSearchSwitcher(); onlineAdapter.submitList(emptyList()); setEmpty(true, if (searchOnline) "Search online" else "Search local music", "Choose Local or Online, enter a query, then press Search.") }
     private var switcher: LinearLayout? = null
-    private fun ensureSearchSwitcher() { if (switcher != null) return; val nav = findViewById<LinearLayout>(R.id.modeNav); switcher = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, 8, 0, 0); layoutParams = LinearLayout.LayoutParams(-1, 44) }; val local = TextView(this).apply { text = "Local"; gravity = android.view.Gravity.CENTER; setOnClickListener { searchOnline = false; showSearch() } }; val online = TextView(this).apply { text = "Online"; gravity = android.view.Gravity.CENTER; setOnClickListener { searchOnline = true; showSearch() } }; switcher!!.addView(local, LinearLayout.LayoutParams(0, -1, 1f)); switcher!!.addView(online, LinearLayout.LayoutParams(0, -1, 1f)); (nav.parent as ViewGroup).addView(switcher, (nav.parent as ViewGroup).indexOfChild(nav) + 1, switcher!!.layoutParams) }
+    private fun ensureSearchSwitcher() { if (switcher != null) { switcher?.visibility = View.VISIBLE; return }; val nav = findViewById<LinearLayout>(R.id.modeNav); switcher = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, 8, 0, 0); layoutParams = LinearLayout.LayoutParams(-1, 44) }; val local = TextView(this).apply { text = "Local"; gravity = android.view.Gravity.CENTER; setOnClickListener { searchOnline = false; showSearch() } }; val online = TextView(this).apply { text = "Online"; gravity = android.view.Gravity.CENTER; setOnClickListener { searchOnline = true; showSearch() } }; switcher!!.addView(local, LinearLayout.LayoutParams(0, -1, 1f)); switcher!!.addView(online, LinearLayout.LayoutParams(0, -1, 1f)); (nav.parent as ViewGroup).addView(switcher, (nav.parent as ViewGroup).indexOfChild(nav) + 1, switcher!!.layoutParams) }
 
     private fun performSearch() { val q = searchInput.text.toString().trim(); if (q.isBlank()) return; if (!searchOnline) { val result = tracks.filter { it.title.contains(q, true) || it.artist.contains(q, true) || it.album.contains(q, true) }; showOnly(songList); songAdapter.submitList(result); setEmpty(result.isEmpty(), "No local matches", "Try another title, artist, or album.") } else { showOnly(onlineList); findViewById<ProgressBar>(R.id.onlineProgress).visibility = View.VISIBLE; Thread { runCatching { onlineRepository.search(q) }.onSuccess { result -> runOnUiThread { findViewById<ProgressBar>(R.id.onlineProgress).visibility = View.GONE; onlineAdapter.submitList(result); setEmpty(result.isEmpty(), "No online results", "Try another search.") } }.onFailure { e -> runOnUiThread { findViewById<ProgressBar>(R.id.onlineProgress).visibility = View.GONE; setEmpty(true, "Search failed", e.message ?: "Check your connection.") } } }.start() } }
 
