@@ -1,4 +1,4 @@
-name: Android Build + Firebase Test Lab
+name: Android Build + Tests
 
 on:
   push:
@@ -6,28 +6,25 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
-    inputs:
-      run_robo:
-        description: 'Run Firebase Test Lab Robo test'
-        required: false
-        default: true
-        type: boolean
 
 env:
   GRADLE_VERSION: '8.9'
   JAVA_VERSION: '17'
 
-# Avoid burning Test Lab time on obsolete queued runs when several commits land quickly.
+# Keep only the newest run for a branch/PR so rapid commits do not consume
+# unnecessary runner time.
 concurrency:
-  group: musicplayer-${{ github.workflow }}-${{ github.ref }}
+  group: musicplayer-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build APK
+  build-and-test:
+    name: Build + Unit Tests + Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,120 +41,30 @@ jobs:
         with:
           gradle-version: ${{ env.GRADLE_VERSION }}
 
-      - name: Build debug APK
-        run: gradle assembleDebug --stacktrace
+      - name: Run unit tests
+        run: gradle testDebugUnitTest --stacktrace --no-daemon
 
+      - name: Run Android lint
+        run: gradle lintDebug --stacktrace --no-daemon
+
+      - name: Build debug APK
+        run: gradle assembleDebug --stacktrace --no-daemon
+
+      # PRs still compile and test, but only main/manual runs store an APK.
+      # This keeps artifact storage small while retaining a downloadable build.
       - name: Upload debug APK
+        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
         uses: actions/upload-artifact@v4
         with:
           name: MusicPlayer-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 14
+          retention-days: 7
 
-  firebase-robo:
-    name: Firebase Test Lab Robo
-    needs: build
-    # Never run cloud tests for pull requests. Pushes to main run automatically;
-    # workflow_dispatch can explicitly turn Robo testing off.
-    if: >-
-      ${{
-        github.event_name != 'pull_request' &&
-        (github.event_name != 'workflow_dispatch' || inputs.run_robo == true)
-      }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    env:
-      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-      FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
-    steps:
-      - name: Check Firebase configuration
-        id: firebase-config
-        shell: bash
-        run: |
-          if [[ -n "${FIREBASE_PROJECT_ID}" && -n "${FIREBASE_SERVICE_ACCOUNT_JSON}" ]]; then
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-            echo "Firebase Test Lab CI credentials are configured."
-          else
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "Firebase Test Lab is not configured yet; cloud tests will be skipped."
-          fi
-
-      - name: Checkout
-        if: steps.firebase-config.outputs.configured == 'true'
-        uses: actions/checkout@v4
-
-      - name: Download APK artifact
-        if: steps.firebase-config.outputs.configured == 'true'
-        uses: actions/download-artifact@v5
+      - name: Upload lint report
+        if: ${{ always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        uses: actions/upload-artifact@v4
         with:
-          name: MusicPlayer-debug-apk
-          path: app/build/outputs/apk/debug
-
-      - name: Authenticate to Google Cloud
-        if: steps.firebase-config.outputs.configured == 'true'
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
-
-      - name: Set up gcloud
-        if: steps.firebase-config.outputs.configured == 'true'
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Configure Google Cloud project
-        if: steps.firebase-config.outputs.configured == 'true'
-        run: gcloud config set project "${FIREBASE_PROJECT_ID}"
-
-      - name: Verify Test Lab access
-        if: steps.firebase-config.outputs.configured == 'true'
-        run: |
-          gcloud firebase test android versions list --limit=5
-          gcloud firebase test android models list --filter="form=VIRTUAL" --limit=5
-
-      - name: Select low-cost virtual devices
-        if: steps.firebase-config.outputs.configured == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          : > /tmp/testlab-devices.txt
-
-          # Two representative virtual devices are enough for the automated smoke test.
-          # This keeps one run comfortably below the 60 virtual-device-minutes/day
-          # no-cost allowance on Blaze, assuming the 3-minute timeout is reached.
-          for version in 34 36; do
-            model="$(gcloud firebase test android models list \
-              --filter="form=VIRTUAL AND supportedVersionIds:${version}" \
-              --format="value(id)" --limit=1 | head -n 1)"
-            if [[ -n "$model" ]]; then
-              echo "model=$model,version=$version,locale=en,orientation=portrait" >> /tmp/testlab-devices.txt
-              echo "Selected Android API $version: $model"
-            else
-              echo "No compatible Test Lab virtual device found for API $version; skipping."
-            fi
-          done
-
-          test -s /tmp/testlab-devices.txt
-          cat /tmp/testlab-devices.txt
-
-      - name: Run short Robo smoke test
-        if: steps.firebase-config.outputs.configured == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          args=(
-            --type robo
-            --app app/build/outputs/apk/debug/app-debug.apk
-            --timeout 3m
-            --record-video
-            --client-details "matrixLabel=MusicPlayer-${GITHUB_SHA::7}"
-          )
-          while IFS= read -r device; do
-            args+=(--device "$device")
-          done < /tmp/testlab-devices.txt
-          gcloud firebase test android run "${args[@]}"
-
-      - name: Print Test Lab help on failure
-        if: failure() && steps.firebase-config.outputs.configured == 'true'
-        run: |
-          echo "Firebase Test Lab failed. Showing supported Android Test Lab commands for diagnostics."
-          gcloud firebase test android --help | sed -n '1,220p' || true
+          name: MusicPlayer-lint-report
+          path: app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
+          retention-days: 7
