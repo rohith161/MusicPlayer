@@ -8,10 +8,10 @@
     <string name="folder_subtitle">Songs in this folder</string>
     <string name="local_videos">Local videos</string>
     <string name="videos_subtitle">Videos stored on your device</string>
-    <string name="online_music">Online music</string>
+    <string name="online_music">Online audio</string>
     <string name="online_subtitle">Discover open audio and stream it in VIA Player</string>
     <string name="no_music">No music found</string>
-    <string name="grant_audio_permission">Allow VIA Player to access your music to build the library.</string>
+    <string name="grant_audio_permission">Allow VIA Player to access your media to build the library.</string>
     <string name="permission_required">Media permission required</string>
     <string name="grant_permission">Grant access</string>
     <string name="unknown_title">Unknown title</string>
