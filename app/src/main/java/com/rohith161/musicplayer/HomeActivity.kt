@@ -1,7 +1,6 @@
 package com.rohith161.musicplayer
 
 import android.Manifest
-import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -12,36 +11,32 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.mediarouter.media.MediaControlIntent
 import androidx.mediarouter.media.MediaRouteSelector
 import com.google.common.util.concurrent.ListenableFuture
-import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import kotlin.math.abs
 
 @androidx.media3.common.util.UnstableApi
 class HomeActivity : AppCompatActivity() {
     private enum class Mode { VIDEO, MUSIC, PLAYLIST, SEARCH }
     private var mode = Mode.MUSIC
-    private var searchOnline = false
     private var downX = 0f
     private var downY = 0f
     private var swipeTracking = false
+
     private lateinit var musicRepository: MusicRepository
     private lateinit var videoRepository: VideoRepository
-    private lateinit var onlineRepository: OnlineRepository
     private lateinit var playlistRepository: PlaylistRepository
     private lateinit var folderAdapter: FolderAdapter
     private lateinit var songAdapter: SongAdapter
@@ -51,14 +46,15 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var songList: androidx.recyclerview.widget.RecyclerView
     private lateinit var videoList: androidx.recyclerview.widget.RecyclerView
     private lateinit var onlineList: androidx.recyclerview.widget.RecyclerView
-    private lateinit var root: View
     private lateinit var emptyState: LinearLayout
     private lateinit var emptyTitle: TextView
     private lateinit var emptySubtitle: TextView
     private lateinit var searchInput: EditText
     private lateinit var searchControls: LinearLayout
-    private lateinit var localSearchToggle: TextView
-    private lateinit var onlineSearchToggle: TextView
+    private lateinit var miniPlayer: LinearLayout
+    private lateinit var nowTitle: TextView
+    private lateinit var nowArtist: TextView
+    private lateinit var miniPlayButton: ImageButton
     private lateinit var controllerFuture: ListenableFuture<MediaController>
     private var controller: MediaController? = null
     private var tracks: List<Track> = emptyList()
@@ -70,11 +66,10 @@ class HomeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        root = findViewById(android.R.id.content)
         musicRepository = MusicRepository(contentResolver)
         videoRepository = VideoRepository(contentResolver)
-        onlineRepository = OnlineRepository()
         playlistRepository = PlaylistRepository(this)
+
         folderList = findViewById(R.id.folderList)
         songList = findViewById(R.id.songList)
         videoList = findViewById(R.id.videoList)
@@ -84,14 +79,18 @@ class HomeActivity : AppCompatActivity() {
         emptySubtitle = findViewById(R.id.emptySubtitle)
         searchInput = findViewById(R.id.searchInput)
         searchControls = findViewById(R.id.searchControls)
-        localSearchToggle = findViewById(R.id.localSearchToggle)
-        onlineSearchToggle = findViewById(R.id.onlineSearchToggle)
+        miniPlayer = findViewById(R.id.miniPlayer)
+        nowTitle = findViewById(R.id.nowTitle)
+        nowArtist = findViewById(R.id.nowArtist)
+        miniPlayButton = findViewById(R.id.playButton)
         findViewById<View>(R.id.grantPermissionButton).visibility = View.GONE
 
         folderAdapter = FolderAdapter { openFolder(it.name) }
         songAdapter = SongAdapter { playTrack(it) }
         videoAdapter = VideoAdapter { playVideo(it) }
-        onlineAdapter = OnlineAdapter { showOnlineActions(it) }
+        onlineAdapter = OnlineAdapter { track ->
+            if (mode == Mode.PLAYLIST) showPlaylistActions(track)
+        }
         setupList(folderList, folderAdapter)
         setupList(songList, songAdapter)
         setupList(videoList, videoAdapter)
@@ -106,6 +105,7 @@ class HomeActivity : AppCompatActivity() {
         setupNavigation()
         setupSearch()
         setupPlayback()
+        setupMiniPlayer()
         setupSwipe()
 
         if (!getPreferences(MODE_PRIVATE).getBoolean("permission_prompted", false) && !hasAudioPermission()) {
@@ -117,30 +117,16 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun setupNavigation() {
-        val music = findViewById<TextView>(R.id.musicTab)
-        val video = findViewById<TextView>(R.id.videoTab)
-        val playlist = findViewById<TextView>(R.id.onlineTab)
-        val search = findViewById<TextView>(R.id.searchTab)
-        music.setOnClickListener { selectMode(Mode.MUSIC) }
-        video.setOnClickListener { selectMode(Mode.VIDEO) }
-        playlist.setOnClickListener { selectMode(Mode.PLAYLIST) }
-        search.setOnClickListener { selectMode(Mode.SEARCH) }
+        findViewById<TextView>(R.id.musicTab).setOnClickListener { selectMode(Mode.MUSIC) }
+        findViewById<TextView>(R.id.videoTab).setOnClickListener { selectMode(Mode.VIDEO) }
+        findViewById<TextView>(R.id.onlineTab).setOnClickListener { selectMode(Mode.PLAYLIST) }
+        findViewById<TextView>(R.id.searchTab).setOnClickListener { selectMode(Mode.SEARCH) }
         selectMode(Mode.MUSIC)
     }
 
     private fun setupSearch() {
-        localSearchToggle.setOnClickListener { if (searchOnline) { searchOnline = false; updateSearchToggle() } }
-        onlineSearchToggle.setOnClickListener { if (!searchOnline) { searchOnline = true; updateSearchToggle() } }
-        findViewById<Button>(R.id.searchButton).setOnClickListener { performSearch() }
-        searchInput.setOnEditorActionListener { _, _, _ -> performSearch(); true }
-        updateSearchToggle()
-    }
-
-    private fun updateSearchToggle() {
-        localSearchToggle.background = if (!searchOnline) getDrawable(R.drawable.bg_tab_selected) else null
-        onlineSearchToggle.background = if (searchOnline) getDrawable(R.drawable.bg_tab_selected) else null
-        localSearchToggle.setTextColor(getColor(if (!searchOnline) R.color.mp_foreground else R.color.mp_foreground_muted))
-        onlineSearchToggle.setTextColor(getColor(if (searchOnline) R.color.mp_foreground else R.color.mp_foreground_muted))
+        findViewById<Button>(R.id.searchButton).setOnClickListener { performLocalSearch() }
+        searchInput.setOnEditorActionListener { _, _, _ -> performLocalSearch(); true }
     }
 
     private fun selectMode(newMode: Mode) {
@@ -167,7 +153,6 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun showFolders() {
-        searchInput.visibility = View.GONE
         searchControls.visibility = View.GONE
         showOnly(folderList)
         findViewById<TextView>(R.id.screenTitle).text = "YOUR MUSIC"
@@ -187,7 +172,6 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun showVideos() {
-        searchInput.visibility = View.GONE
         searchControls.visibility = View.GONE
         showOnly(videoList)
         findViewById<TextView>(R.id.screenTitle).text = "VIDEO"
@@ -197,80 +181,51 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun showPlaylist() {
-        searchInput.visibility = View.GONE
         searchControls.visibility = View.GONE
         showOnly(onlineList)
         findViewById<TextView>(R.id.screenTitle).text = "PLAYLIST"
-        findViewById<TextView>(R.id.screenSubtitle).text = "Saved online songs"
-        val list = playlistRepository.getAll()
+        findViewById<TextView>(R.id.screenSubtitle).text = "Saved songs"
         onlineAdapter.setPlaylistMode(true)
+        val list = playlistRepository.getAll()
         onlineAdapter.submitList(list)
-        setEmpty(list.isEmpty(), "Playlist is empty", "Save online songs from Search to keep them here.")
+        setEmpty(list.isEmpty(), "Playlist is empty", "Saved songs will appear here.")
     }
 
     private fun showSearch() {
-        searchInput.visibility = View.VISIBLE
         searchControls.visibility = View.VISIBLE
-        showOnly(onlineList)
+        showOnly(songList)
         findViewById<TextView>(R.id.screenTitle).text = "SEARCH"
-        findViewById<TextView>(R.id.screenSubtitle).text = if (searchOnline) "Online open audio" else "Local music"
+        findViewById<TextView>(R.id.screenSubtitle).text = "Local music only"
         onlineAdapter.setPlaylistMode(false)
-        onlineAdapter.submitList(emptyList())
-        updateSearchToggle()
-        setEmpty(true, if (searchOnline) "Search online" else "Search local music", "Enter a query and press Search.")
+        setEmpty(false, "", "")
     }
 
-    private fun performSearch() {
+    private fun performLocalSearch() {
         val q = searchInput.text.toString().trim()
         if (q.isBlank()) {
-            setEmpty(true, "Enter a search", "Type a title, artist, or keyword first.")
+            setEmpty(true, "Enter a search", "Type a title, artist, or album.")
             return
         }
-        if (!searchOnline) {
-            showOnly(songList)
-            val result = tracks.filter { it.title.contains(q, true) || it.artist.contains(q, true) || it.album.contains(q, true) }
-            songAdapter.submitList(result)
-            setEmpty(result.isEmpty(), "No local matches", "Try another title, artist, or album.")
-            return
+        showOnly(songList)
+        val result = tracks.filter {
+            it.title.contains(q, true) || it.artist.contains(q, true) || it.album.contains(q, true) || it.folder.contains(q, true)
         }
-        showOnly(onlineList)
-        findViewById<ProgressBar>(R.id.onlineProgress).visibility = View.VISIBLE
-        setEmpty(false, "", "")
-        Thread {
-            runCatching { onlineRepository.search(q) }
-                .onSuccess { result ->
-                    runOnUiThread {
-                        findViewById<ProgressBar>(R.id.onlineProgress).visibility = View.GONE
-                        onlineAdapter.submitList(result)
-                        setEmpty(result.isEmpty(), "No online results", "Try another search.")
-                    }
-                }
-                .onFailure { e ->
-                    runOnUiThread {
-                        findViewById<ProgressBar>(R.id.onlineProgress).visibility = View.GONE
-                        setEmpty(true, "Search failed", e.message ?: "Check your internet connection.")
-                    }
-                }
-        }.start()
+        songAdapter.submitList(result)
+        setEmpty(result.isEmpty(), "No local matches", "Try another title, artist, album, or folder.")
     }
 
-    private fun showOnlineActions(track: OnlineTrack) {
-        val items = if (mode == Mode.PLAYLIST) arrayOf("Play now", "Download", "Remove from playlist") else arrayOf("Play now", "Save to playlist", "Download")
-        AlertDialog.Builder(this).setTitle(track.title).setMessage(track.creator).setItems(items) { _, which ->
-            if (mode == Mode.PLAYLIST) {
-                when (which) { 0 -> playOnline(track); 1 -> download(track); 2 -> { playlistRepository.remove(track.identifier); showPlaylist() } }
-            } else {
-                when (which) { 0 -> playOnline(track); 1 -> { playlistRepository.add(track); Toast.makeText(this, "Saved to playlist", Toast.LENGTH_SHORT).show() }; 2 -> download(track) }
-            }
-        }.show()
-    }
-
-    private fun playOnline(track: OnlineTrack) {
-        Thread {
-            runCatching { track.audioUrl ?: onlineRepository.resolveAudioUrl(track.identifier) }
-                .onSuccess { url -> runOnUiThread { if (url == null) Toast.makeText(this, "No playable audio found", Toast.LENGTH_LONG).show() else playUri(url, track.title, track.creator) } }
-                .onFailure { e -> runOnUiThread { Toast.makeText(this, "Online playback failed: ${e.message}", Toast.LENGTH_LONG).show() } }
-        }.start()
+    private fun showPlaylistActions(track: OnlineTrack) {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(track.title)
+            .setMessage(track.creator)
+            .setItems(arrayOf("Play now", "Remove from playlist")) { _, which ->
+                if (which == 0) {
+                    track.audioUrl?.let { playUri(it, track.title, track.creator) }
+                } else {
+                    playlistRepository.remove(track.identifier)
+                    showPlaylist()
+                }
+            }.show()
     }
 
     private fun playUri(uri: String, title: String, artist: String) {
@@ -289,50 +244,69 @@ class HomeActivity : AppCompatActivity() {
         startActivity(Intent(this, PlayerActivity::class.java))
     }
 
-    private fun playVideo(video: LocalVideo) { startActivity(Intent(this, VideoActivity::class.java).apply { putExtra(VideoActivity.EXTRA_URI, video.uri.toString()); putExtra(VideoActivity.EXTRA_TITLE, video.title) }) }
-
-    private fun download(track: OnlineTrack) {
-        onlineAdapter.setDownloadProgress(track.identifier, 1)
-        Thread {
-            try {
-                val url = track.audioUrl ?: onlineRepository.resolveAudioUrl(track.identifier) ?: throw IllegalStateException("No audio file")
-                val c = URL(url).openConnection() as HttpURLConnection
-                c.connectTimeout = 10000; c.readTimeout = 20000; c.connect()
-                if (c.responseCode !in 200..299) throw IllegalStateException("HTTP ${c.responseCode}")
-                val total = c.contentLengthLong
-                val file = File(File(filesDir, "online_downloads").apply { mkdirs() }, "${track.identifier.hashCode()}.audio")
-                c.inputStream.use { input -> file.outputStream().use { out ->
-                    val buffer = ByteArray(8192); var done = 0L
-                    while (true) { val n = input.read(buffer); if (n < 0) break; if (n == 0) continue; out.write(buffer, 0, n); done += n; if (total > 0) runOnUiThread { onlineAdapter.setDownloadProgress(track.identifier, (done * 100 / total).toInt().coerceIn(1, 99)) } }
-                } }
-                c.disconnect()
-                runOnUiThread { onlineAdapter.setDownloadProgress(track.identifier, 100); Toast.makeText(this, "Downloaded for offline playback", Toast.LENGTH_SHORT).show() }
-            } catch (e: Exception) { runOnUiThread { onlineAdapter.setDownloadProgress(track.identifier, 0); Toast.makeText(this, "Download failed: ${e.message}", Toast.LENGTH_LONG).show() } }
-        }.start()
+    private fun playVideo(video: LocalVideo) {
+        startActivity(Intent(this, VideoActivity::class.java).apply {
+            putExtra(VideoActivity.EXTRA_URI, video.uri.toString())
+            putExtra(VideoActivity.EXTRA_TITLE, video.title)
+        })
     }
 
     private fun setupPlayback() {
         val token = SessionToken(this, ComponentName(this, PlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
-        controllerFuture.addListener({ controller = runCatching { controllerFuture.get() }.getOrNull() }, ContextCompat.getMainExecutor(this))
+        controllerFuture.addListener({
+            controller = runCatching { controllerFuture.get() }.getOrNull()
+            controller?.addListener(object : Player.Listener {
+                override fun onIsPlayingChanged(isPlaying: Boolean) = updateMiniPlayer()
+                override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) = updateMiniPlayer()
+                override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = updateMiniPlayer()
+            })
+            updateMiniPlayer()
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun setupMiniPlayer() {
+        findViewById<View>(R.id.miniPlayerInfo).setOnClickListener { startActivity(Intent(this, PlayerActivity::class.java)) }
+        miniPlayButton.setOnClickListener { controller?.let { if (it.isPlaying) it.pause() else it.play() } }
+        findViewById<ImageButton>(R.id.prevButton).setOnClickListener { controller?.seekToPreviousMediaItem() }
+        findViewById<ImageButton>(R.id.nextButton).setOnClickListener { controller?.seekToNextMediaItem() }
+    }
+
+    private fun updateMiniPlayer() {
+        val c = controller ?: return
+        val hasMedia = c.mediaItemCount > 0 && c.currentMediaItem != null
+        miniPlayer.visibility = if (hasMedia) View.VISIBLE else View.GONE
+        if (!hasMedia) return
+        nowTitle.text = c.mediaMetadata.title ?: getString(R.string.unknown_title)
+        nowArtist.text = c.mediaMetadata.artist ?: getString(R.string.unknown_artist)
+        miniPlayButton.setImageResource(if (c.isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play)
     }
 
     private fun setupSwipe() {
-        root.setOnTouchListener { _, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> { downX = event.x; downY = event.y; swipeTracking = true; false }
-                MotionEvent.ACTION_UP -> { if (swipeTracking) handleSwipe(event); swipeTracking = false; false }
-                MotionEvent.ACTION_CANCEL -> { swipeTracking = false; false }
-                else -> false
-            }
-        }
+        // Touch is observed at Activity level so RecyclerViews and other child views cannot swallow the tab swipe.
     }
 
-    private fun handleSwipe(e: MotionEvent) {
-        val dx = e.x - downX; val dy = e.y - downY
-        if (abs(dx) <= 100 || abs(dx) <= abs(dy) * 1.3f) return
-        val order = Mode.values(); val i = order.indexOf(mode)
-        val next = if (dx < 0) order[(i + 1) % order.size] else order[(i - 1 + order.size) % order.size]
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                downX = event.rawX
+                downY = event.rawY
+                swipeTracking = true
+            }
+            MotionEvent.ACTION_UP -> {
+                if (swipeTracking) handleSwipe(event.rawX - downX, event.rawY - downY)
+                swipeTracking = false
+            }
+            MotionEvent.ACTION_CANCEL -> swipeTracking = false
+        }
+        return super.dispatchTouchEvent(event)
+    }
+
+    private fun handleSwipe(dx: Float, dy: Float) {
+        if (abs(dx) <= 100f || abs(dx) <= abs(dy) * 1.3f) return
+        val order = listOf(Mode.VIDEO, Mode.MUSIC, Mode.PLAYLIST, Mode.SEARCH)
+        val i = order.indexOf(mode)
+        val next = if (dx < 0f) order[(i + 1) % order.size] else order[(i - 1 + order.size) % order.size]
         selectMode(next)
     }
 
@@ -340,17 +314,61 @@ class HomeActivity : AppCompatActivity() {
         Thread {
             val a = if (hasAudioPermission()) musicRepository.loadTracks() else emptyList()
             val v = if (hasVideoPermission()) videoRepository.loadVideos() else emptyList()
-            runOnUiThread { tracks = a; videos = v; when (mode) { Mode.MUSIC -> showFolders(); Mode.VIDEO -> showVideos(); Mode.PLAYLIST -> showPlaylist(); Mode.SEARCH -> Unit } }
+            runOnUiThread {
+                tracks = a
+                videos = v
+                when (mode) {
+                    Mode.MUSIC -> showFolders()
+                    Mode.VIDEO -> showVideos()
+                    Mode.PLAYLIST -> showPlaylist()
+                    Mode.SEARCH -> Unit
+                }
+                updateMiniPlayer()
+            }
         }.start()
+    }
+
+    private fun setupList(list: androidx.recyclerview.widget.RecyclerView, adapter: androidx.recyclerview.widget.RecyclerView.Adapter<*>) {
+        list.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
+        list.adapter = adapter
+    }
+
+    private fun showOnly(target: View) {
+        listOf(folderList, songList, videoList, onlineList).forEach { it.visibility = if (it === target) View.VISIBLE else View.GONE }
+        emptyState.visibility = View.GONE
+    }
+
+    private fun setEmpty(empty: Boolean, title: String, subtitle: String) {
+        if (empty) {
+            emptyTitle.text = title
+            emptySubtitle.text = subtitle
+            emptyState.visibility = View.VISIBLE
+        } else {
+            emptyState.visibility = View.GONE
+        }
     }
 
     private fun hasAudioPermission() = ContextCompat.checkSelfPermission(this, if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
     private fun hasVideoPermission() = ContextCompat.checkSelfPermission(this, if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-    private fun requestMediaPermissions() { val p = buildList { add(if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE); if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.READ_MEDIA_VIDEO); if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS) }; permissionLauncher.launch(p.toTypedArray()) }
-    private fun setupList(list: androidx.recyclerview.widget.RecyclerView, adapter: androidx.recyclerview.widget.RecyclerView.Adapter<*>) { list.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this); list.adapter = adapter }
-    private fun showOnly(target: View) { listOf(folderList, songList, videoList, onlineList).forEach { it.visibility = if (it === target) View.VISIBLE else View.GONE }; emptyState.visibility = View.GONE }
-    private fun setEmpty(show: Boolean, title: String, subtitle: String) { emptyTitle.text = title; emptySubtitle.text = subtitle; emptyState.visibility = if (show) View.VISIBLE else View.GONE }
 
-    override fun onBackPressed() { if (mode == Mode.MUSIC && currentFolder != null) { showFolders(); currentFolder = null } else super.onBackPressed() }
-    override fun onDestroy() { if (::controllerFuture.isInitialized) controllerFuture.cancel(true); controller?.release(); super.onDestroy() }
+    private fun requestMediaPermissions() {
+        val p = buildList {
+            add(if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE)
+            if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.READ_MEDIA_VIDEO)
+            if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        permissionLauncher.launch(p.toTypedArray())
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateMiniPlayer()
+    }
+
+    override fun onDestroy() {
+        if (::controllerFuture.isInitialized) controllerFuture.cancel(true)
+        controller?.release()
+        controller = null
+        super.onDestroy()
+    }
 }
