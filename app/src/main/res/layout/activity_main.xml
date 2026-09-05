@@ -51,7 +51,6 @@
         android:layout_marginTop="20dp"
         android:backgroundTint="@color/mp_border"
         android:hint="@string/search_music"
-        android:hintTextColor="@color/mp_foreground_muted"
         android:inputType="text"
         android:maxLines="1"
         android:paddingStart="16dp"
