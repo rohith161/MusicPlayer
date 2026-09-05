@@ -1,7 +1,10 @@
 package com.rohith161.musicplayer
 
+import android.util.Log
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
@@ -18,8 +21,9 @@ class PlaybackService : MediaSessionService() {
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .build()
 
-        // Prefer the device's hardware decoders, but allow Media3 to fall back
-        // to another available decoder when hardware decoder initialization fails.
+        // Media3 normally selects the best decoder available on the device.
+        // Decoder fallback lets it try another decoder if the preferred
+        // hardware decoder cannot initialize the selected format.
         val renderersFactory = DefaultRenderersFactory(this)
             .setEnableDecoderFallback(true)
 
@@ -27,6 +31,16 @@ class PlaybackService : MediaSessionService() {
             .setAudioAttributes(audioAttributes, true)
             .setHandleAudioBecomingNoisy(true)
             .build()
+
+        player.addListener(object : Player.Listener {
+            override fun onPlayerError(error: PlaybackException) {
+                Log.e(
+                    "MusicPlayer",
+                    "Playback failed: ${error.errorCodeName} - ${error.message}",
+                    error
+                )
+            }
+        })
 
         mediaSession = MediaSession.Builder(this, player).build()
     }
