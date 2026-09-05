@@ -8,4 +8,5 @@
     <string name="permission_required">Music permission required</string>
     <string name="grant_permission">Grant permission</string>
     <string name="unknown_artist">Unknown artist</string>
+    <string name="media_output">Media output</string>
 </resources>
