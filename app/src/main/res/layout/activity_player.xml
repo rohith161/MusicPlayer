@@ -122,6 +122,25 @@
             android:contentDescription="Repeat off"
             android:src="@android:drawable/ic_menu_rotate"
             app:tint="@color/mp_foreground" />
+        <TextView
+            android:id="@+id/playerSpeed"
+            android:layout_width="56dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="1.0×"
+            android:textColor="@color/mp_foreground"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+        <TextView
+            android:id="@+id/playerSleep"
+            android:layout_width="72dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="Sleep"
+            android:textColor="@color/mp_foreground"
+            android:textSize="13sp"
+            android:background="?attr/selectableItemBackgroundBorderless" />
     </LinearLayout>
 
     <LinearLayout
