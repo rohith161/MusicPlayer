@@ -13,6 +13,8 @@ import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import androidx.mediarouter.media.MediaControlIntent
+import androidx.mediarouter.media.MediaRouteSelector
 import com.google.common.util.concurrent.ListenableFuture
 
 @androidx.media3.common.util.UnstableApi
@@ -46,6 +48,11 @@ class PlayerActivity : AppCompatActivity() {
         findViewById<ImageButton>(R.id.playerPrevious).setOnClickListener { controller?.seekToPreviousMediaItem() }
         play.setOnClickListener { controller?.let { if (it.isPlaying) it.pause() else it.play() } }
         findViewById<ImageButton>(R.id.playerNext).setOnClickListener { controller?.seekToNextMediaItem() }
+        findViewById<androidx.mediarouter.app.MediaRouteButton>(R.id.playerMediaOutputButton).routeSelector =
+            MediaRouteSelector.Builder()
+                .addControlCategory(MediaControlIntent.CATEGORY_LIVE_AUDIO)
+                .addControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK)
+                .build()
 
         progress.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, value: Int, fromUser: Boolean) {
