@@ -22,7 +22,11 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var title: TextView
     private lateinit var artist: TextView
     private lateinit var play: ImageButton
+    private lateinit var shuffle: ImageButton
+    private lateinit var repeat: ImageButton
     private lateinit var progress: SeekBar
+    private lateinit var elapsed: TextView
+    private lateinit var durationText: TextView
     private val progressHandler = Handler(Looper.getMainLooper())
     private var userSeeking = false
 
@@ -39,13 +43,33 @@ class PlayerActivity : AppCompatActivity() {
         title = findViewById(R.id.playerTitle)
         artist = findViewById(R.id.playerArtist)
         play = findViewById(R.id.playerPlay)
+        shuffle = findViewById(R.id.playerShuffle)
+        repeat = findViewById(R.id.playerRepeat)
         progress = findViewById(R.id.playerProgress)
+        elapsed = findViewById(R.id.playerElapsed)
+        durationText = findViewById(R.id.playerDuration)
         progress.max = 1000
 
         findViewById<ImageButton>(R.id.playerClose).setOnClickListener { finish() }
         findViewById<ImageButton>(R.id.playerPrevious).setOnClickListener { controller?.seekToPreviousMediaItem() }
         play.setOnClickListener { controller?.let { if (it.isPlaying) it.pause() else it.play() } }
         findViewById<ImageButton>(R.id.playerNext).setOnClickListener { controller?.seekToNextMediaItem() }
+        shuffle.setOnClickListener {
+            controller?.let { player ->
+                player.shuffleModeEnabled = !player.shuffleModeEnabled
+                updateModeButtons()
+            }
+        }
+        repeat.setOnClickListener {
+            controller?.let { player ->
+                player.repeatMode = when (player.repeatMode) {
+                    Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                    Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                    else -> Player.REPEAT_MODE_OFF
+                }
+                updateModeButtons()
+            }
+        }
 
         progress.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, value: Int, fromUser: Boolean) {
@@ -53,8 +77,7 @@ class PlayerActivity : AppCompatActivity() {
                 val mediaController = controller ?: return
                 val duration = mediaController.duration
                 if (duration != C.TIME_UNSET && duration > 0) {
-                    val position = duration * value.toLong() / 1000L
-                    mediaController.seekTo(position)
+                    mediaController.seekTo(duration * value.toLong() / 1000L)
                 }
             }
 
@@ -75,10 +98,14 @@ class PlayerActivity : AppCompatActivity() {
                 controller = controllerFuture.get()
                 updateNowPlaying()
                 updateProgress()
+                updateModeButtons()
                 controller?.addListener(object : Player.Listener {
                     override fun onIsPlayingChanged(isPlaying: Boolean) = updateNowPlaying()
                     override fun onMediaMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) = updateNowPlaying()
                     override fun onPlaybackStateChanged(playbackState: Int) = updateProgress()
+                    override fun onIsLoadingChanged(isLoading: Boolean) = updateProgress()
+                    override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = updateModeButtons()
+                    override fun onRepeatModeChanged(repeatMode: Int) = updateModeButtons()
                 })
             } catch (_: Exception) {
                 finish()
@@ -93,17 +120,35 @@ class PlayerActivity : AppCompatActivity() {
         play.setImageResource(if (mediaController.isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play)
     }
 
+    private fun updateModeButtons() {
+        val player = controller ?: return
+        shuffle.alpha = if (player.shuffleModeEnabled) 1f else 0.45f
+        repeat.alpha = if (player.repeatMode == Player.REPEAT_MODE_OFF) 0.45f else 1f
+        repeat.contentDescription = when (player.repeatMode) {
+            Player.REPEAT_MODE_ONE -> "Repeat one"
+            Player.REPEAT_MODE_ALL -> "Repeat all"
+            else -> "Repeat off"
+        }
+    }
+
     private fun updateProgress() {
         val mediaController = controller ?: return
         if (userSeeking) return
         val duration = mediaController.duration
-        val position = mediaController.currentPosition
-        progress.isEnabled = duration != C.TIME_UNSET && duration > 0
-        progress.progress = if (duration != C.TIME_UNSET && duration > 0) {
-            ((position.coerceIn(0L, duration) * 1000L) / duration).toInt()
-        } else {
-            0
-        }
+        val position = mediaController.currentPosition.coerceAtLeast(0L)
+        val validDuration = duration != C.TIME_UNSET && duration > 0
+        progress.isEnabled = validDuration
+        progress.progress = if (validDuration) ((position.coerceIn(0L, duration) * 1000L) / duration).toInt() else 0
+        elapsed.text = formatTime(position)
+        durationText.text = if (validDuration) formatTime(duration) else "--:--"
+    }
+
+    private fun formatTime(milliseconds: Long): String {
+        val totalSeconds = (milliseconds / 1000L).coerceAtLeast(0L)
+        val hours = totalSeconds / 3600L
+        val minutes = (totalSeconds % 3600L) / 60L
+        val seconds = totalSeconds % 60L
+        return if (hours > 0) "%d:%02d:%02d".format(hours, minutes, seconds) else "%d:%02d".format(minutes, seconds)
     }
 
     override fun onStart() {
