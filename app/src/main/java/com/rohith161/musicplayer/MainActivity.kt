@@ -110,7 +110,6 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.videoTab).setOnClickListener { selectMode(Mode.VIDEO) }
         findViewById<TextView>(R.id.onlineTab).setOnClickListener { selectMode(Mode.ONLINE) }
         findViewById<ImageButton>(R.id.backButton).setOnClickListener { showFolders() }
-        // The mini-player is also the entry point back to the full Now Playing screen.
         miniPlayer.setOnClickListener { openPlayerScreen() }
         searchInput.setOnEditorActionListener { _, actionId, _ ->
             if (mode == Mode.ONLINE && (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE)) {
@@ -324,11 +323,18 @@ class MainActivity : AppCompatActivity() {
     private fun playTrack(track: Track) {
         val player = controller ?: return
         val items = allTracks.map { item ->
-            MediaItem.Builder().setMediaId(item.id.toString()).setUri(item.uri).setMediaMetadata(MediaMetadata.Builder().setTitle(item.title).setArtist(item.artist).setAlbumTitle(item.album).build()).build()
+            MediaItem.Builder()
+                .setMediaId(item.id.toString())
+                .setUri(item.uri)
+                .setMediaMetadata(MediaMetadata.Builder().setTitle(item.title).setArtist(item.artist).setAlbumTitle(item.album).build())
+                .build()
         }
         val index = allTracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
+        val savedMediaId = PlaybackStateStore.mediaId(this)
+        val savedPosition = PlaybackStateStore.position(this)
+        val resumePosition = if (savedMediaId == track.id.toString()) savedPosition else 0L
         try {
-            player.setMediaItems(items, index, 0L)
+            player.setMediaItems(items, index, resumePosition)
             player.prepare()
             player.play()
             nowTitle.text = track.title
