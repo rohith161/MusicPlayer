@@ -50,18 +50,17 @@ jobs:
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace --no-daemon
 
-      # PRs still compile and test, but only main/manual runs store an APK.
-      # This keeps artifact storage small while retaining a downloadable build.
+      # Every successful build stores a downloadable APK, including PR builds.
       - name: Upload debug APK
-        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
         uses: actions/upload-artifact@v4
         with:
           name: MusicPlayer-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
 
+      # Keep the lint report available for every CI run, including PR builds.
       - name: Upload lint report
-        if: ${{ always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: MusicPlayer-lint-report

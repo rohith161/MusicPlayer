@@ -4,36 +4,38 @@
     android:id="@+id/homeRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/mp_background"
     android:orientation="vertical"
-    android:background="@drawable/bg_galaxy"
-    android:paddingStart="18dp"
-    android:paddingEnd="18dp">
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp">
 
-    <!-- Futuristic app header -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="72dp"
-        android:layout_marginTop="8dp"
-        android:gravity="center_vertical">
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp">
+
         <ImageView
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="@drawable/bg_glass_card"
-            android:padding="9dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:contentDescription="VIA Player"
             android:src="@drawable/ic_via_player"
-            android:contentDescription="VIA Player" />
+            android:padding="6dp" />
+
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="13dp"
+            android:layout_marginStart="10dp"
             android:orientation="vertical">
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="VIA PLAYER"
                 android:textColor="@color/mp_foreground"
-                android:textSize="24sp"
+                android:textSize="22sp"
                 android:textStyle="bold"
                 android:letterSpacing="0.04" />
             <TextView
@@ -42,72 +44,106 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:text="YOUR MUSIC"
-                android:textColor="@color/mp_accent"
-                android:textSize="10sp"
+                android:textColor="@color/mp_primary"
+                android:textSize="11sp"
                 android:textStyle="bold"
-                android:letterSpacing="0.18" />
-            <TextView
-                android:id="@+id/screenSubtitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="Your personal audio universe"
-                android:textColor="@color/mp_foreground_muted"
-                android:textSize="11sp" />
+                android:letterSpacing="0.14" />
         </LinearLayout>
+
+        <androidx.mediarouter.app.MediaRouteButton
+            android:id="@+id/mediaOutputButton"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:contentDescription="Media output"
+            android:background="?attr/selectableItemBackgroundBorderless" />
         <ImageButton
             android:id="@+id/settingsButton"
-            android:layout_width="46dp"
-            android:layout_height="46dp"
-            android:background="@drawable/bg_glass_card"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Settings"
-            android:padding="12dp"
             android:src="@android:drawable/ic_menu_manage"
             app:tint="@color/mp_foreground" />
     </LinearLayout>
 
-    <!-- Search surface -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_via_hero"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="YOUR MEDIA. YOUR SPACE."
+                android:textColor="@color/mp_foreground_muted"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.12" />
+            <TextView
+                android:id="@+id/screenSubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:text="Your music, videos and playlists — ready locally."
+                android:textColor="@color/mp_foreground"
+                android:textSize="14sp"
+                android:maxLines="2" />
+        </LinearLayout>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="VIA"
+            android:textColor="@color/mp_accent"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.16" />
+    </LinearLayout>
+
     <LinearLayout
         android:id="@+id/searchControls"
         android:layout_width="match_parent"
         android:layout_height="52dp"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="10dp"
         android:gravity="center_vertical"
         android:visibility="gone">
         <EditText
             android:id="@+id/searchInput"
             android:layout_width="0dp"
-            android:layout_height="50dp"
+            android:layout_height="52dp"
             android:layout_weight="1"
-            android:background="@drawable/bg_search"
-            android:hint="Search the galaxy..."
+            android:background="@drawable/bg_via_search"
+            android:hint="@string/search_music"
             android:imeOptions="actionSearch"
             android:inputType="text"
             android:maxLines="1"
-            android:paddingStart="17dp"
-            android:paddingEnd="17dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
             android:singleLine="true"
             android:textColor="@color/mp_foreground"
             android:textColorHint="@color/mp_foreground_muted"
-            android:textSize="14sp" />
+            android:textSize="15sp" />
         <Button
             android:id="@+id/searchButton"
             android:layout_width="wrap_content"
-            android:layout_height="46dp"
+            android:layout_height="44dp"
             android:layout_marginStart="8dp"
             android:minWidth="0dp"
-            android:text="GO"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:backgroundTint="@color/mp_primary"
-            android:textColor="@color/mp_primary_foreground" />
+            android:text="Search"
+            android:textAllCaps="false" />
     </LinearLayout>
 
-    <!-- Folder drill-down -->
     <LinearLayout
         android:id="@+id/folderHeader"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="44dp"
         android:layout_marginTop="8dp"
         android:gravity="center_vertical"
         android:visibility="gone">
@@ -124,33 +160,30 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:ellipsize="middle"
+            android:layout_marginStart="4dp"
+            android:ellipsize="end"
             android:maxLines="1"
-            android:textColor="@color/mp_foreground"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:textColor="@color/mp_foreground_muted"
+            android:textSize="13sp" />
     </LinearLayout>
 
-    <!-- Library content -->
     <FrameLayout
         android:id="@+id/contentContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="8dp">
+        android:layout_marginTop="10dp">
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/folderList"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingTop="4dp"
             android:paddingBottom="12dp" />
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/songList"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingTop="4dp"
             android:paddingBottom="12dp"
             android:visibility="gone" />
         <androidx.recyclerview.widget.RecyclerView
@@ -158,7 +191,6 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingTop="4dp"
             android:paddingBottom="12dp"
             android:visibility="gone" />
         <androidx.recyclerview.widget.RecyclerView
@@ -166,11 +198,9 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingTop="4dp"
             android:paddingBottom="12dp"
             android:visibility="gone" />
 
-        <!-- Permission / empty state -->
         <LinearLayout
             android:id="@+id/emptyState"
             android:layout_width="match_parent"
@@ -179,82 +209,60 @@
             android:orientation="vertical"
             android:padding="28dp"
             android:visibility="gone">
-            <LinearLayout
+            <ImageView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:contentDescription="VIA Player"
+                android:src="@drawable/ic_via_player"
+                android:padding="12dp" />
+            <TextView
+                android:id="@+id/emptyTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/no_music"
+                android:textColor="@color/mp_foreground"
+                android:textSize="19sp"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/emptySubtitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_glass_card"
-                android:gravity="center_horizontal"
-                android:orientation="vertical"
-                android:paddingStart="24dp"
-                android:paddingTop="30dp"
-                android:paddingEnd="24dp"
-                android:paddingBottom="28dp">
-                <ImageView
-                    android:layout_width="62dp"
-                    android:layout_height="62dp"
-                    android:background="@drawable/bg_play_button"
-                    android:padding="15dp"
-                    android:src="@drawable/ic_via_player"
-                    android:contentDescription="Media library" />
-                <TextView
-                    android:id="@+id/emptyTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="18dp"
-                    android:gravity="center"
-                    android:text="Music access needed"
-                    android:textColor="@color/mp_foreground"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-                <TextView
-                    android:id="@+id/emptySubtitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center"
-                    android:text="Allow media access to scan your songs and videos."
-                    android:textColor="@color/mp_foreground_muted"
-                    android:textSize="13sp" />
-                <Button
-                    android:id="@+id/grantPermissionButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    android:layout_marginTop="20dp"
-                    android:text="GRANT MEDIA ACCESS"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:backgroundTint="@color/mp_primary"
-                    android:textColor="@color/mp_primary_foreground" />
-            </LinearLayout>
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text="@string/grant_audio_permission"
+                android:textColor="@color/mp_foreground_muted"
+                android:textSize="13sp" />
+            <Button
+                android:id="@+id/grantPermissionButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="@string/grant_permission"
+                android:textAllCaps="false" />
         </LinearLayout>
     </FrameLayout>
 
-    <!-- Compact now-playing surface -->
     <LinearLayout
         android:id="@+id/miniPlayer"
         android:layout_width="match_parent"
-        android:layout_height="68dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"
-        android:background="@drawable/bg_glass_card"
-        android:elevation="5dp"
+        android:background="@drawable/bg_via_hero"
+        android:elevation="8dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="12dp"
-        android:paddingEnd="5dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="8dp"
         android:visibility="gone">
-        <ImageView
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="@drawable/bg_play_button"
-            android:padding="11dp"
-            android:src="@drawable/ic_via_player"
-            android:contentDescription="Now playing" />
         <LinearLayout
             android:id="@+id/miniPlayerInfo"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="11dp"
             android:orientation="vertical">
             <TextView
                 android:id="@+id/nowTitle"
@@ -263,7 +271,7 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:textColor="@color/mp_foreground"
-                android:textSize="13sp"
+                android:textSize="14sp"
                 android:textStyle="bold" />
             <TextView
                 android:id="@+id/nowArtist"
@@ -277,8 +285,8 @@
         </LinearLayout>
         <ImageButton
             android:id="@+id/prevButton"
-            android:layout_width="38dp"
-            android:layout_height="48dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Previous"
             android:src="@android:drawable/ic_media_previous"
@@ -293,22 +301,19 @@
             app:tint="@color/mp_primary_foreground" />
         <ImageButton
             android:id="@+id/nextButton"
-            android:layout_width="38dp"
-            android:layout_height="48dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Next"
             android:src="@android:drawable/ic_media_next"
             app:tint="@color/mp_foreground" />
     </LinearLayout>
 
-    <!-- Floating bottom navigation -->
     <LinearLayout
         android:id="@+id/modeNav"
         android:layout_width="match_parent"
-        android:layout_height="66dp"
-        android:layout_marginBottom="8dp"
-        android:background="@drawable/bg_bottom_nav"
-        android:elevation="7dp"
+        android:layout_height="58dp"
+        android:background="@color/mp_surface"
         android:gravity="center"
         android:orientation="horizontal"
         android:padding="5dp">
@@ -318,43 +323,39 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="VIDEO"
+            android:text="Video"
             android:textColor="@color/mp_foreground_muted"
-            android:textSize="10sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.06" />
+            android:textSize="12sp"
+            android:textStyle="bold" />
         <TextView
             android:id="@+id/musicTab"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="MUSIC"
+            android:text="Music"
             android:textColor="@color/mp_foreground_muted"
-            android:textSize="10sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.06" />
+            android:textSize="12sp"
+            android:textStyle="bold" />
         <TextView
             android:id="@+id/onlineTab"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="PLAYLISTS"
+            android:text="Playlist"
             android:textColor="@color/mp_foreground_muted"
-            android:textSize="10sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.04" />
+            android:textSize="12sp"
+            android:textStyle="bold" />
         <TextView
             android:id="@+id/searchTab"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="SEARCH"
+            android:text="Search"
             android:textColor="@color/mp_foreground_muted"
-            android:textSize="10sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.06" />
+            android:textSize="12sp"
+            android:textStyle="bold" />
     </LinearLayout>
 </LinearLayout>

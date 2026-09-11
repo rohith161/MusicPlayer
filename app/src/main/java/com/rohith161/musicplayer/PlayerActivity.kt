@@ -14,11 +14,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import androidx.mediarouter.media.MediaControlIntent
+import androidx.mediarouter.media.MediaRouteSelector
 import com.google.common.util.concurrent.ListenableFuture
 
 @UnstableApi
@@ -68,8 +69,16 @@ class PlayerActivity : AppCompatActivity() {
         findViewById<ImageButton>(R.id.playerPrevious).setOnClickListener { controller?.seekToPreviousMediaItem() }
         play.setOnClickListener { controller?.let { if (it.isPlaying) it.pause() else it.play() } }
         findViewById<ImageButton>(R.id.playerNext).setOnClickListener { controller?.seekToNextMediaItem() }
+        findViewById<androidx.mediarouter.app.MediaRouteButton>(R.id.playerMediaOutputButton).routeSelector =
+            MediaRouteSelector.Builder()
+                .addControlCategory(MediaControlIntent.CATEGORY_LIVE_AUDIO)
+                .addControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK)
+                .build()
         shuffle.setOnClickListener {
-            controller?.let { player -> player.shuffleModeEnabled = !player.shuffleModeEnabled; updateModeButtons() }
+            controller?.let { player ->
+                player.shuffleModeEnabled = !player.shuffleModeEnabled
+                updateModeButtons()
+            }
         }
         repeat.setOnClickListener {
             controller?.let { player ->
@@ -114,7 +123,10 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun connectController() {
-        controllerFuture = MediaController.Builder(this, SessionToken(this, ComponentName(this, PlaybackService::class.java))).buildAsync()
+        controllerFuture = MediaController.Builder(
+            this,
+            SessionToken(this, ComponentName(this, PlaybackService::class.java))
+        ).buildAsync()
         controllerFuture.addListener({
             controller = runCatching { controllerFuture.get() }.getOrNull()
             controller?.addListener(object : Player.Listener {
@@ -139,7 +151,9 @@ class PlayerActivity : AppCompatActivity() {
     private fun updateProgress() {
         val player = controller ?: return
         val duration = player.duration
-        if (!userSeeking && duration > 0) progress.progress = ((player.currentPosition * 1000L) / duration).toInt().coerceIn(0, 1000)
+        if (!userSeeking && duration > 0) {
+            progress.progress = ((player.currentPosition * 1000L) / duration).toInt().coerceIn(0, 1000)
+        }
         elapsed.text = formatTime(player.currentPosition)
         durationText.text = if (duration > 0) formatTime(duration) else "--:--"
     }
@@ -167,7 +181,11 @@ class PlayerActivity : AppCompatActivity() {
         val labels = arrayOf("Off", "15 minutes", "30 minutes", "45 minutes", "60 minutes", "End of song")
         AlertDialog.Builder(this).setTitle("Sleep timer").setItems(labels) { _, which ->
             when (which) {
-                0 -> { sleepEndElapsed = 0L; PlaybackPreferences.clearSleep(this); sleepButton.text = "SLEEP" }
+                0 -> {
+                    sleepEndElapsed = 0L
+                    PlaybackPreferences.clearSleep(this)
+                    sleepButton.text = "SLEEP"
+                }
                 1, 2, 3, 4 -> {
                     val minutes = intArrayOf(15, 30, 45, 60)[which - 1]
                     sleepEndElapsed = SystemClock.elapsedRealtime() + minutes * 60_000L
